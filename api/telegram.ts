@@ -283,11 +283,11 @@ async function handleTeachingResponse(
   );
 
   if (isCorrect || isAcknowledgment) {
-    // Correct! Give brief praise and advance
+    // Correct! Give brief acknowledgment and advance
     const praise = await generateActionResponse(
       {
         type: "conversation",
-        message: `User said "${userText}" which is correct for ${itemDisplay}. Give very brief praise (1 sentence, like "Perfect! *tail wags*") then move on.`,
+        message: `User said "${userText}" which is correct for ${itemDisplay}. Just say "Good!" or "That's right!" - ONE short sentence max. No tail wags, no emojis. Then say "Next word:" to signal moving on.`,
       },
       context,
     );

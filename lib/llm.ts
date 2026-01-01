@@ -507,8 +507,8 @@ Present this encouragingly. Highlight achievements.`;
 
 /**
  * Evaluates if a student's answer is correct during teaching phases.
- * This is a simple classification call that does NOT use Emi's personality.
- * Returns true if the answer is correct, false otherwise.
+ * Simple check: does the student's response match the expected Japanese word/phrase?
+ * Accepts kanji, hiragana, or romaji.
  */
 export async function evaluateTeachingAnswer(
   studentAnswer: string,
@@ -516,54 +516,38 @@ export async function evaluateTeachingAnswer(
 ): Promise<boolean> {
   const client = getClient();
 
-  const systemPrompt = `You are a Japanese language answer evaluator for a teaching context.
+  // Very simple prompt - just ask if it's a match
+  const prompt = `Does the student's answer match the expected Japanese?
 
-Your job: Determine if the student demonstrated understanding of the vocabulary/grammar item.
+Expected: ${expectedItem}
+Student said: ${studentAnswer}
 
-IMPORTANT - Be GENEROUS in evaluation:
-1. Kanji and hiragana are ALWAYS equivalent:
-   - 私 = わたし
-   - お願い = おねがい
-   - よろしくお願いします = よろしくおねがいします
-2. If expected is a WORD and student used it correctly IN A SENTENCE, that's CORRECT
-   - Expected: わたし (watashi) - I/me
-   - Student: 私はロドです → CORRECT (they used わたし/私 correctly!)
-3. Romaji is acceptable (konnichiwa = こんにちは)
-4. Punctuation differences don't matter (。vs nothing)
-5. Polite/casual variations are OK
-6. Small typos in romaji are OK
+Rules:
+- Kanji = hiragana (私 = わたし, お願い = おねがい)
+- Romaji OK (konnichiwa = こんにちは)
+- Punctuation doesn't matter
+- If student used the word correctly in a sentence, that's correct
 
-The goal is teaching, not strict testing. If the student shows they understand the item, mark CORRECT.
-
-Respond with ONLY "CORRECT" or "INCORRECT" - nothing else.`;
-
-  const userPrompt = `Teaching item: ${expectedItem}
-Student response: "${studentAnswer}"
-
-Did the student demonstrate understanding of this item?`;
+Answer only: YES or NO`;
 
   try {
     const response = await client.chat.completions.create({
-      model: getIntentModel(), // Use faster model for simple classification
-      max_tokens: 20,
-      temperature: 0, // Deterministic output
+      model: getIntentModel(),
+      max_tokens: 10,
+      temperature: 0,
       messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
+        { role: "user", content: prompt },
       ],
     });
 
     const content = response.choices[0]?.message?.content?.trim().toUpperCase() || "";
+    const isCorrect = content.includes("YES");
 
-    // Check for CORRECT but not INCORRECT
-    const isCorrect = content.includes("CORRECT") && !content.includes("INCORRECT");
-
-    console.log(`[evaluateTeachingAnswer] Expected: "${expectedItem}", Got: "${studentAnswer}", LLM said: "${content}", Result: ${isCorrect}`);
+    console.log(`[evaluateTeachingAnswer] Expected: "${expectedItem}", Got: "${studentAnswer}", LLM: "${content}", Result: ${isCorrect}`);
 
     return isCorrect;
   } catch (error) {
     console.error("[evaluateTeachingAnswer] Error:", error);
-    // On error, fall back to false (ask them to try again)
     return false;
   }
 }

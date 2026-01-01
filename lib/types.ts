@@ -268,6 +268,7 @@ export interface N5Syllabus {
 export type Intent =
   // Lesson intents
   | StartLessonIntent
+  | RestartLessonIntent
   | AnswerQuestionIntent
   | RequestHintIntent
   | SkipExerciseIntent
@@ -295,6 +296,11 @@ export type Intent =
 export interface StartLessonIntent {
   type: "start_lesson";
   dayNumber?: number; // Optional: specific day to start
+}
+
+export interface RestartLessonIntent {
+  type: "restart_lesson";
+  dayNumber?: number; // Optional: specific day to restart (defaults to current)
 }
 
 export interface AnswerQuestionIntent {

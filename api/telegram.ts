@@ -3,6 +3,7 @@ import type {
   TelegramUpdate,
   Intent,
   StartLessonIntent,
+  RestartLessonIntent,
   AnswerQuestionIntent,
   RequestHintIntent,
   SkipExerciseIntent,
@@ -125,6 +126,16 @@ export default async function handler(
       return;
     }
 
+    // Handle /restart command
+    if (userText.trim().toLowerCase() === "/restart") {
+      const response = await handleRestartLesson(chatId, { type: "restart_lesson" }, {
+        messages: (await redis.getConversationData(chatId)).messages,
+        summary: (await redis.getConversationData(chatId)).summary,
+      });
+      res.status(200).json({ ok: true });
+      return;
+    }
+
     // Get context
     const [conversationData, activeLessonState, activeChecklist] = await Promise.all([
       redis.getConversationData(chatId),
@@ -200,6 +211,8 @@ async function handleIntent(
   switch (intent.type) {
     case "start_lesson":
       return handleStartLesson(chatId, intent, context);
+    case "restart_lesson":
+      return handleRestartLesson(chatId, intent, context);
     case "answer_question":
       return handleAnswerQuestion(chatId, intent, context);
     case "request_hint":
@@ -488,6 +501,72 @@ async function handleStartLesson(
   await telegram.sendMessage(chatId, firstItemResponse.message);
 
   return introResponse + "\n\n" + firstItemResponse.message;
+}
+
+async function handleRestartLesson(
+  chatId: number,
+  intent: RestartLessonIntent,
+  context: ConversationContext,
+): Promise<string> {
+  const profile = await redis.getUserProfile(chatId);
+  if (!profile) {
+    const response = "I couldn't find your profile. Please try again.";
+    await telegram.sendMessage(chatId, response);
+    return response;
+  }
+
+  // Get current checklist to find the day number
+  const existingChecklist = await redis.getLessonChecklist(chatId);
+  const dayNumber = intent.dayNumber || existingChecklist?.dayNumber || profile.currentDay;
+
+  // Clear existing checklist and legacy state
+  await Promise.all([
+    redis.clearLessonChecklist(chatId),
+    redis.clearActiveLessonState(chatId),
+  ]);
+
+  // Load syllabus to verify day exists
+  const dayContent = await syllabus.getSyllabusDay(dayNumber);
+  if (!dayContent) {
+    const response = `Day ${dayNumber} content isn't available yet.`;
+    await telegram.sendMessage(chatId, response);
+    return response;
+  }
+
+  // Generate fresh checklist
+  const checklist = await generateChecklist(chatId, dayNumber);
+  if (!checklist) {
+    const response = "I couldn't load the lesson content. Please try again.";
+    await telegram.sendMessage(chatId, response);
+    return response;
+  }
+
+  // Save checklist to Redis
+  await redis.saveLessonChecklist(checklist);
+
+  // Send restart confirmation
+  const restartMsg = `Restarting Day ${dayNumber}: ${checklist.title} from the beginning!`;
+  await telegram.sendMessage(chatId, restartMsg);
+
+  // Generate intro message
+  const introResponse = await generateLessonIntro(checklist, context);
+  await telegram.sendMessage(chatId, introResponse);
+
+  // Start the first teaching item
+  const firstItemResponse = await generateLessonResponse(
+    checklist,
+    context.messages,
+    "Let's begin!",
+  );
+
+  if (firstItemResponse.checklistAction === "complete") {
+    const result = advanceChecklist(checklist);
+    await redis.saveLessonChecklist(result.checklist);
+  }
+
+  await telegram.sendMessage(chatId, firstItemResponse.message);
+
+  return restartMsg + "\n\n" + introResponse + "\n\n" + firstItemResponse.message;
 }
 
 async function handleAnswerQuestion(

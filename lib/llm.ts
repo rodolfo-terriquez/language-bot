@@ -193,6 +193,11 @@ LESSON FLOW:
     "start lesson", "begin today's lesson", "let's learn", "start day 3"
     dayNumber is optional - defaults to current day if not specified
 
+  restart_lesson → {"type":"restart_lesson","dayNumber":N}
+    "restart lesson", "start over", "begin again", "restart", "restart day 3"
+    Use when user wants to restart current lesson from beginning
+    dayNumber is optional - defaults to current active lesson
+
   answer_question → {"type":"answer_question","answer":"...","inputType":"text"|"voice"}
     When user provides an answer during practice/assessment
     Extract their actual answer text

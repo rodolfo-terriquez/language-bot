@@ -265,24 +265,19 @@ async function handleTeachingResponse(
 
   if (isAcknowledgment) {
     // Just acknowledging, move on
-    await telegram.sendMessage(chatId, "Good! Next:");
     await lessonEngine.advanceToNextItem(chatId);
-    setTimeout(async () => {
-      await continueLesson(chatId, context);
-    }, 1000);
-    return "Good! Next:";
+    await continueLesson(chatId, context);
+    return "Acknowledged";
   }
 
   // Use dedicated evaluation function (no Emi personality, just classification)
   const isCorrect = await evaluateTeachingAnswer(userText, itemDisplay);
 
   if (isCorrect) {
-    await telegram.sendMessage(chatId, "Good! Next:");
+    await telegram.sendMessage(chatId, "Good!");
     await lessonEngine.advanceToNextItem(chatId);
-    setTimeout(async () => {
-      await continueLesson(chatId, context);
-    }, 1000);
-    return "Good! Next:";
+    await continueLesson(chatId, context);
+    return "Good!";
   } else {
     // Incorrect - give brief correction
     const correction = await generateActionResponse(
@@ -345,9 +340,7 @@ async function handleStartLesson(
   await telegram.sendMessage(chatId, response);
 
   // Automatically show first vocabulary item
-  setTimeout(async () => {
-    await advanceLessonPhase(chatId, context);
-  }, 2000);
+  await advanceLessonPhase(chatId, context);
 
   return response;
 }
@@ -405,9 +398,7 @@ async function handleAnswerQuestion(
 
   // Continue to next item if we should advance
   if (result.shouldAdvance) {
-    setTimeout(async () => {
-      await continueLesson(chatId, context);
-    }, 1500);
+    await continueLesson(chatId, context);
   }
 
   return response;
@@ -458,9 +449,7 @@ async function handleSkipExercise(
   await telegram.sendMessage(chatId, response);
 
   // Continue to next
-  setTimeout(async () => {
-    await continueLesson(chatId, context);
-  }, 1000);
+  await continueLesson(chatId, context);
 
   return response;
 }
@@ -569,9 +558,7 @@ async function handleResumeLesson(
   await telegram.sendMessage(chatId, response);
 
   // Continue the lesson
-  setTimeout(async () => {
-    await continueLesson(chatId, context);
-  }, 1500);
+  await continueLesson(chatId, context);
 
   return response;
 }
@@ -733,9 +720,7 @@ async function showNextExercise(
     );
     await telegram.sendMessage(chatId, response);
 
-    setTimeout(async () => {
-      await showNextExercise(chatId, context);
-    }, 2000);
+    await showNextExercise(chatId, context);
 
     return response;
   }

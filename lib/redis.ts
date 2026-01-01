@@ -10,6 +10,7 @@ import type {
   ConversationMessage,
   ConversationData,
   SyllabusDay,
+  LessonChecklist,
 } from "./types.js";
 
 let redisClient: Redis | null = null;
@@ -39,6 +40,9 @@ const LESSONS_SET_KEY = (chatId: number) => `${getKeyPrefix()}lessons:${chatId}`
 
 // Active lesson state (in-progress session)
 const ACTIVE_LESSON_KEY = (chatId: number) => `${getKeyPrefix()}active_lesson:${chatId}`;
+
+// Lesson checklist (for LLM context tracking)
+const LESSON_CHECKLIST_KEY = (chatId: number) => `${getKeyPrefix()}checklist:${chatId}`;
 
 // Mastery tracking
 const MASTERY_KEY = (chatId: number) => `${getKeyPrefix()}mastery:${chatId}`;
@@ -398,6 +402,32 @@ export async function recordExerciseResult(
 
   await updateActiveLessonState(state);
   return state;
+}
+
+// ==========================================
+// Lesson Checklist Operations
+// ==========================================
+
+const CHECKLIST_TTL = 24 * 60 * 60; // 24 hours
+
+export async function getLessonChecklist(chatId: number): Promise<LessonChecklist | null> {
+  const redis = getClient();
+  const data = await redis.get<string>(LESSON_CHECKLIST_KEY(chatId));
+  if (!data) return null;
+  return typeof data === "string" ? JSON.parse(data) : data;
+}
+
+export async function saveLessonChecklist(checklist: LessonChecklist): Promise<void> {
+  const redis = getClient();
+  checklist.lastUpdated = Date.now();
+  await redis.set(LESSON_CHECKLIST_KEY(checklist.chatId), JSON.stringify(checklist), {
+    ex: CHECKLIST_TTL,
+  });
+}
+
+export async function clearLessonChecklist(chatId: number): Promise<void> {
+  const redis = getClient();
+  await redis.del(LESSON_CHECKLIST_KEY(chatId));
 }
 
 // ==========================================

@@ -13,6 +13,7 @@ import type {
   FreeConversationIntent,
   PracticeTopicIntent,
   StartCatchUpIntent,
+  LessonChecklist,
 } from "../lib/types.js";
 import * as telegram from "../lib/telegram.js";
 import { transcribeAudio } from "../lib/whisper.js";
@@ -20,6 +21,9 @@ import {
   parseIntent,
   generateActionResponse,
   generateConversationSummary,
+  generateLessonResponse,
+  generateLessonIntro,
+  generateLessonComplete,
   evaluateTeachingAnswer,
   ConversationContext,
 } from "../lib/llm.js";
@@ -30,6 +34,12 @@ import {
   scheduleDailyLesson,
   deleteSchedule,
 } from "../lib/qstash.js";
+import {
+  generateChecklist,
+  advanceChecklist,
+  insertClarification,
+  isChecklistComplete,
+} from "../lib/lesson-checklist.js";
 
 // Register the summarization callback to avoid circular imports
 redis.setSummarizationCallback(generateConversationSummary);
@@ -116,9 +126,10 @@ export default async function handler(
     }
 
     // Get context
-    const [conversationData, activeLessonState] = await Promise.all([
+    const [conversationData, activeLessonState, activeChecklist] = await Promise.all([
       redis.getConversationData(chatId),
       redis.getActiveLessonState(chatId),
+      redis.getLessonChecklist(chatId),
     ]);
 
     const context: ConversationContext = {
@@ -126,8 +137,22 @@ export default async function handler(
       summary: conversationData.summary,
     };
 
-    // During teaching phases, treat any response as acknowledgment to continue
-    // Don't bother with intent parsing - just advance the lesson
+    // NEW: Checklist-based lesson flow (takes priority)
+    if (activeChecklist) {
+      console.log(`[${chatId}] Active checklist for Day ${activeChecklist.dayNumber}, item ${activeChecklist.currentIndex + 1}/${activeChecklist.totalCount}`);
+      const response = await handleChecklistLesson(chatId, userText, activeChecklist, context);
+      if (response) {
+        await redis.addToConversation(chatId, userText, response, {
+          dayNumber: activeChecklist.dayNumber,
+          phase: "vocabulary_teaching", // Legacy compatibility
+        });
+      }
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    // LEGACY: During teaching phases, treat any response as acknowledgment to continue
+    // This path is kept for backwards compatibility but new lessons use checklists
     if (activeLessonState && isTeachingPhase(activeLessonState.phase)) {
       console.log(`[${chatId}] In teaching phase (${activeLessonState.phase}), advancing lesson`);
       const response = await handleTeachingResponse(chatId, userText, context);
@@ -227,6 +252,103 @@ function isTeachingPhase(phase: string): boolean {
   return ["vocabulary_teaching", "grammar_teaching", "kanji_teaching"].includes(phase);
 }
 
+// ==========================================
+// Checklist-Based Lesson Flow (New Architecture)
+// ==========================================
+
+async function handleChecklistLesson(
+  chatId: number,
+  userText: string,
+  checklist: LessonChecklist,
+  context: ConversationContext,
+): Promise<string> {
+  // Check if lesson is already complete
+  if (isChecklistComplete(checklist)) {
+    const profile = await redis.getUserProfile(chatId);
+    const response = await generateLessonComplete(checklist, profile?.currentStreak || 1, context);
+    await telegram.sendMessage(chatId, response);
+
+    // Clean up checklist
+    await redis.clearLessonChecklist(chatId);
+
+    // Update user progress
+    if (profile) {
+      await redis.updateStreak(chatId);
+      await redis.advanceToNextDay(chatId);
+    }
+
+    return response;
+  }
+
+  // Generate LLM response with checklist context
+  const llmResponse = await generateLessonResponse(
+    checklist,
+    context.messages,
+    userText,
+  );
+
+  // Handle checklist action
+  let updatedChecklist = checklist;
+
+  switch (llmResponse.checklistAction) {
+    case "complete":
+      // Mark current item complete and advance
+      const result = advanceChecklist(updatedChecklist);
+      updatedChecklist = result.checklist;
+
+      if (result.isComplete) {
+        // Lesson complete!
+        await redis.saveLessonChecklist(updatedChecklist);
+        await telegram.sendMessage(chatId, llmResponse.message);
+
+        // Generate completion message
+        const profile = await redis.getUserProfile(chatId);
+        const completionMsg = await generateLessonComplete(
+          updatedChecklist,
+          profile?.currentStreak || 1,
+          context,
+        );
+        await telegram.sendMessage(chatId, completionMsg);
+
+        // Clean up
+        await redis.clearLessonChecklist(chatId);
+        await redis.clearActiveLessonState(chatId);
+
+        // Update progress
+        if (profile) {
+          await redis.updateStreak(chatId);
+          await redis.advanceToNextDay(chatId);
+        }
+
+        return llmResponse.message + "\n\n" + completionMsg;
+      }
+      break;
+
+    case "insert":
+      // Insert clarification item
+      if (llmResponse.insertItem?.content) {
+        updatedChecklist = insertClarification(
+          updatedChecklist,
+          llmResponse.insertItem.content,
+        );
+      }
+      break;
+
+    case "none":
+    default:
+      // Stay on current item, no changes to checklist
+      break;
+  }
+
+  // Save updated checklist
+  await redis.saveLessonChecklist(updatedChecklist);
+
+  // Send response to user
+  await telegram.sendMessage(chatId, llmResponse.message);
+
+  return llmResponse.message;
+}
+
 async function handleTeachingResponse(
   chatId: number,
   userText: string,
@@ -240,21 +362,21 @@ async function handleTeachingResponse(
 
   // Get the current teaching item
   const result = await lessonEngine.getCurrentTeachingItem(chatId);
-  let itemDisplay = "";
-  let itemInfo = "";
 
+  // If no teaching item (all done), advance to next phase
+  if (!result.data?.vocabularyItem && !result.data?.grammarPattern && !result.data?.kanjiItem) {
+    await continueLesson(chatId, context);
+    return "Teaching phase complete - advanced";
+  }
+
+  // Get the Japanese word/phrase to check against
+  let expectedJapanese = "";
   if (result.data?.vocabularyItem) {
-    const item = result.data.vocabularyItem;
-    itemDisplay = `${item.japanese} (${item.reading}) - ${item.meaning}`;
-    itemInfo = `Vocabulary: ${item.japanese} (${item.reading}) meaning "${item.meaning}"`;
+    expectedJapanese = result.data.vocabularyItem.japanese;
   } else if (result.data?.grammarPattern) {
-    const item = result.data.grammarPattern;
-    itemDisplay = item.pattern;
-    itemInfo = `Grammar pattern: ${item.pattern} meaning "${item.meaning}"`;
+    expectedJapanese = result.data.grammarPattern.pattern;
   } else if (result.data?.kanjiItem) {
-    const item = result.data.kanjiItem;
-    itemDisplay = `${item.character} - ${item.meanings.join(", ")}`;
-    itemInfo = `Kanji: ${item.character} meaning "${item.meanings.join(", ")}", readings: ${item.readings.onyomi.join(", ")} / ${item.readings.kunyomi.join(", ")}`;
+    expectedJapanese = result.data.kanjiItem.character;
   }
 
   // Check for simple acknowledgments first
@@ -270,26 +392,20 @@ async function handleTeachingResponse(
     return "Acknowledged";
   }
 
-  // Use dedicated evaluation function (no Emi personality, just classification)
-  const isCorrect = await evaluateTeachingAnswer(userText, itemDisplay);
+  // Simple evaluation: does the user's answer contain/match the expected Japanese?
+  const isCorrect = await evaluateTeachingAnswer(userText, expectedJapanese);
 
   if (isCorrect) {
-    // Don't send separate "Good!" - just advance to next item
-    // The next teaching prompt will naturally acknowledge their progress
+    // Correct! Advance to next item (the next prompt will acknowledge them)
     await lessonEngine.advanceToNextItem(chatId);
     await continueLesson(chatId, context);
     return "Correct - advanced to next item";
   } else {
-    // Incorrect - give brief correction
-    const correction = await generateActionResponse(
-      {
-        type: "conversation",
-        message: `User tried "${userText}" but we're practicing ${itemDisplay}. Give a brief correction (1-2 sentences) and ask them to try again. No emojis.`,
-      },
-      context,
-    );
-    await telegram.sendMessage(chatId, correction);
-    return correction;
+    // Incorrect - just tell them what we're practicing and ask to try again
+    // Keep it simple - don't generate a long LLM response
+    const response = `Not quite! We're practicing: **${expectedJapanese}**\nTry saying/typing it!`;
+    await telegram.sendMessage(chatId, response);
+    return response;
   }
 }
 
@@ -309,16 +425,28 @@ async function handleStartLesson(
     return response;
   }
 
-  // Check if already in an active lesson
+  // Check if already has an active checklist
+  const existingChecklist = await redis.getLessonChecklist(chatId);
+  if (existingChecklist) {
+    // Continue where they left off with existing checklist
+    const response = `You're already in Day ${existingChecklist.dayNumber}. Let's continue where we left off!`;
+    await telegram.sendMessage(chatId, response);
+
+    // Send the first teaching prompt to resume
+    const resumeResponse = await handleChecklistLesson(chatId, "continue", existingChecklist, context);
+    return response + "\n\n" + resumeResponse;
+  }
+
+  // Check for legacy active lesson state
   const existingState = await redis.getActiveLessonState(chatId);
   if (existingState) {
-    // Continue where they left off
-    return continueLesson(chatId, context);
+    // Clear legacy state and start fresh with checklist
+    await redis.clearActiveLessonState(chatId);
   }
 
   const dayNumber = intent.dayNumber || profile.currentDay;
 
-  // Load syllabus to get lesson info
+  // Load syllabus to verify day exists
   const dayContent = await syllabus.getSyllabusDay(dayNumber);
   if (!dayContent) {
     const response = `Day ${dayNumber} content isn't available yet. Let's try Day 1!`;
@@ -326,24 +454,40 @@ async function handleStartLesson(
     return response;
   }
 
-  // Start the lesson
-  const result = await lessonEngine.startLesson(chatId, dayNumber);
+  // Generate checklist for this lesson
+  const checklist = await generateChecklist(chatId, dayNumber);
+  if (!checklist) {
+    const response = "I couldn't load the lesson content. Please try again.";
+    await telegram.sendMessage(chatId, response);
+    return response;
+  }
 
-  const response = await generateActionResponse(
-    {
-      type: "lesson_intro",
-      dayNumber,
-      title: dayContent.title,
-      topics: dayContent.practiceGoals,
-    },
-    context,
+  // Save checklist to Redis
+  await redis.saveLessonChecklist(checklist);
+
+  // Also start legacy lesson progress for tracking
+  await redis.startLesson(chatId, dayNumber);
+
+  // Generate intro message
+  const introResponse = await generateLessonIntro(checklist, context);
+  await telegram.sendMessage(chatId, introResponse);
+
+  // Now start the first teaching item by generating the first LLM response
+  const firstItemResponse = await generateLessonResponse(
+    checklist,
+    context.messages,
+    "Let's begin!", // Synthetic first message to kick off teaching
   );
-  await telegram.sendMessage(chatId, response);
 
-  // Automatically show first vocabulary item
-  await advanceLessonPhase(chatId, context);
+  // Handle any checklist action from the first response
+  if (firstItemResponse.checklistAction === "complete") {
+    const result = advanceChecklist(checklist);
+    await redis.saveLessonChecklist(result.checklist);
+  }
 
-  return response;
+  await telegram.sendMessage(chatId, firstItemResponse.message);
+
+  return introResponse + "\n\n" + firstItemResponse.message;
 }
 
 async function handleAnswerQuestion(
@@ -964,10 +1108,11 @@ async function handleStartCatchUp(
 // ==========================================
 
 async function handleDebugCommand(chatId: number): Promise<void> {
-  const [profile, activeState, lessonContext] = await Promise.all([
+  const [profile, activeState, lessonContext, checklist] = await Promise.all([
     redis.getUserProfile(chatId),
     redis.getActiveLessonState(chatId),
     redis.getLessonContext(chatId),
+    redis.getLessonChecklist(chatId),
   ]);
 
   const debugInfo = {
@@ -979,7 +1124,16 @@ async function handleDebugCommand(chatId: number): Promise<void> {
           lessonsCompleted: profile.totalLessonsCompleted,
         }
       : null,
-    activeLesson: activeState
+    checklist: checklist
+      ? {
+          day: checklist.dayNumber,
+          title: checklist.title,
+          currentIndex: checklist.currentIndex,
+          currentItem: checklist.items[checklist.currentIndex]?.displayText || "complete",
+          progress: `${checklist.completedCount}/${checklist.totalCount}`,
+        }
+      : null,
+    legacyActiveLesson: activeState
       ? {
           day: activeState.dayNumber,
           phase: activeState.phase,

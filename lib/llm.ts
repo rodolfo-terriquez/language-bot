@@ -6,7 +6,10 @@ import type {
   ActiveLessonState,
   ActionContext,
   ConversationMessage,
+  LessonChecklist,
+  LessonLLMResponse,
 } from "./types.js";
+import { renderChecklistForLLM, getCurrentItem } from "./lesson-checklist.js";
 
 // Initialize Braintrust logger for tracing
 const braintrustApiKey = process.env.BRAINTRUST_API_KEY;
@@ -674,6 +677,205 @@ Celebrate their progress, mention specific achievements, encourage them for next
   const content = response.choices[0]?.message?.content;
   if (!content) {
     return `Great work this week! You've made real progress in your Japanese studies.`;
+  }
+
+  return content;
+}
+
+// ==========================================
+// Checklist-Based Lesson Response Generation
+// ==========================================
+
+const LESSON_RESPONSE_INSTRUCTIONS = `You are teaching a Japanese lesson. Use the checklist to track your progress.
+
+RESPONSE FORMAT (JSON only, no markdown):
+{
+  "message": "Your teaching message to the student",
+  "checklistAction": "none" | "complete" | "insert",
+  "insertItem": { "content": "..." }  // Only if action is "insert"
+}
+
+CHECKLIST ACTIONS:
+- "none": Stay on current item (user hasn't demonstrated understanding yet)
+- "complete": Mark current item done and move to next (user understood it)
+- "insert": Add a clarification item after current (user is confused, needs extra help)
+
+TEACHING FLOW:
+1. For TEACH items: Present the word/grammar/kanji, explain briefly, ask them to try
+2. For PRACTICE items: Quiz them on what they've learned in this category
+3. For CLARIFY items: Address the specific confusion, then try the original item again
+
+WHEN TO COMPLETE:
+- User correctly says/writes the word (kanji, hiragana, or romaji all count)
+- User demonstrates understanding (even in a sentence)
+- User answers practice question correctly
+
+WHEN TO STAY (none):
+- First presenting a new item
+- User gives wrong answer (correct them, let them try again)
+- User asks a question about the current item
+
+WHEN TO INSERT:
+- User is repeatedly confused
+- User explicitly says they don't understand
+- User's confusion reveals a gap in knowledge
+
+Remember: ALWAYS output valid JSON. No markdown code blocks.`;
+
+/**
+ * Generate a lesson response using the checklist-based approach.
+ * The LLM sees the full checklist and decides when to advance.
+ */
+export async function generateLessonResponse(
+  checklist: LessonChecklist,
+  conversationHistory: ConversationMessage[],
+  userMessage: string,
+): Promise<LessonLLMResponse> {
+  const client = getClient();
+
+  const checklistText = renderChecklistForLLM(checklist);
+  const currentItem = getCurrentItem(checklist);
+
+  // Build the system prompt with personality + checklist + instructions
+  let systemPrompt = getCurrentTimeContext() + EMI_PERSONALITY;
+
+  systemPrompt += `\n\n---LESSON CHECKLIST---
+${checklistText}
+---END CHECKLIST---
+
+${LESSON_RESPONSE_INSTRUCTIONS}`;
+
+  // Add current item focus
+  if (currentItem) {
+    systemPrompt += `\n\nCURRENT FOCUS: ${currentItem.type.toUpperCase()} - ${currentItem.displayText}`;
+  } else {
+    systemPrompt += `\n\nLESSON COMPLETE! All items have been covered. Congratulate the student and summarize what they learned.`;
+  }
+
+  // Build messages array
+  const messages: ChatCompletionMessageParam[] = [
+    { role: "system", content: systemPrompt },
+  ];
+
+  // Add last 20 conversation messages
+  const recentHistory = conversationHistory.slice(-20);
+  for (const msg of recentHistory) {
+    const prefix = msg.role === "user" ? `[${formatTimestamp(msg.timestamp)}] ` : "";
+    messages.push({
+      role: msg.role,
+      content: prefix + msg.content,
+    });
+  }
+
+  // Add current user message
+  messages.push({ role: "user", content: userMessage });
+
+  const response = await client.chat.completions.create({
+    model: getChatModel(),
+    max_tokens: 1000,
+    temperature: 0.7,
+    messages,
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    return {
+      message: "I'm sorry, I had trouble generating a response. Could you try again?",
+      checklistAction: "none",
+    };
+  }
+
+  // Parse JSON response
+  try {
+    let jsonText = content.trim();
+    // Remove markdown code blocks if present
+    if (jsonText.startsWith("```")) {
+      jsonText = jsonText.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+    }
+
+    const parsed = JSON.parse(jsonText) as LessonLLMResponse;
+
+    // Validate the response
+    if (!parsed.message || typeof parsed.message !== "string") {
+      throw new Error("Invalid message in response");
+    }
+    if (!["none", "complete", "insert"].includes(parsed.checklistAction)) {
+      parsed.checklistAction = "none";
+    }
+
+    console.log(`[generateLessonResponse] Action: ${parsed.checklistAction}, Message length: ${parsed.message.length}`);
+
+    return parsed;
+  } catch (error) {
+    console.error("[generateLessonResponse] Failed to parse JSON:", content, error);
+
+    // Fallback: treat the whole response as the message
+    return {
+      message: content,
+      checklistAction: "none",
+    };
+  }
+}
+
+/**
+ * Generate the lesson intro message when starting a new lesson with checklist.
+ */
+export async function generateLessonIntro(
+  checklist: LessonChecklist,
+  conversationContext?: ConversationContext,
+): Promise<string> {
+  const client = getClient();
+
+  const prompt = `Start Day ${checklist.dayNumber} lesson: "${checklist.title}".
+
+This lesson has ${checklist.totalCount} items to cover.
+
+Write a SHORT (2-3 sentences max) excited greeting that:
+- Welcomes them to today's lesson
+- Mentions the theme briefly
+- Says you'll start now
+
+DO NOT: list vocabulary, explain grammar, show examples, or teach anything yet. Just greet them warmly.`;
+
+  const response = await client.chat.completions.create({
+    model: getChatModel(),
+    max_tokens: 300,
+    messages: buildContextMessages(EMI_PERSONALITY, prompt, conversationContext),
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    return `Welcome to Day ${checklist.dayNumber}: ${checklist.title}! Let's get started!`;
+  }
+
+  return content;
+}
+
+/**
+ * Generate a lesson completion message.
+ */
+export async function generateLessonComplete(
+  checklist: LessonChecklist,
+  streak: number,
+  conversationContext?: ConversationContext,
+): Promise<string> {
+  const client = getClient();
+
+  const prompt = `Day ${checklist.dayNumber} "${checklist.title}" is complete!
+The student completed all ${checklist.completedCount} items.
+Current streak: ${streak} days.
+
+Celebrate their achievement! This is a moment for excitement. Mention what they learned (${checklist.title}) and encourage them to come back tomorrow.`;
+
+  const response = await client.chat.completions.create({
+    model: getChatModel(),
+    max_tokens: 400,
+    messages: buildContextMessages(EMI_PERSONALITY, prompt, conversationContext),
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    return `Congratulations! You've completed Day ${checklist.dayNumber}! See you tomorrow!`;
   }
 
   return content;

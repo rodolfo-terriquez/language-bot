@@ -485,3 +485,48 @@ export type ActionContext =
   | { type: "missed_lessons"; days: number[]; total: number }
   | { type: "lesson_time_set"; hour: number; minute: number }
   | { type: "conversation"; message: string };
+
+// ==========================================
+// Lesson Checklist (for LLM context tracking)
+// ==========================================
+
+export interface LessonChecklistItem {
+  id: string; // "item_001"
+  type: "teach" | "practice" | "clarify";
+  status: "pending" | "current" | "complete";
+
+  // Content from syllabus
+  contentType: "vocabulary" | "grammar" | "kanji";
+  contentId: string; // Reference like "v01_01"
+
+  // Display info (for checklist rendering)
+  displayText: string; // "こんにちは (konnichiwa) - Hello"
+
+  // For dynamically inserted items
+  isInserted?: boolean;
+  insertedContent?: string;
+}
+
+export interface LessonChecklist {
+  chatId: number;
+  dayNumber: number;
+  title: string; // "Greetings & Self-Introduction"
+
+  items: LessonChecklistItem[];
+  currentIndex: number;
+
+  completedCount: number;
+  totalCount: number;
+
+  createdAt: number;
+  lastUpdated: number;
+}
+
+export interface LessonLLMResponse {
+  message: string; // What to send to user
+  checklistAction: "none" | "complete" | "insert";
+  insertItem?: {
+    type: "clarify";
+    content: string; // What to clarify
+  };
+}

@@ -237,81 +237,77 @@ async function handleTeachingResponse(
   const dayContent = await syllabus.getSyllabusDay(state.dayNumber);
   if (!dayContent) return "Could not load lesson content.";
 
-  // Get the current teaching item to compare against
+  // Get the current teaching item
   const result = await lessonEngine.getCurrentTeachingItem(chatId);
-  let expectedAnswers: string[] = [];
   let itemDisplay = "";
+  let itemInfo = "";
 
   if (result.data?.vocabularyItem) {
     const item = result.data.vocabularyItem;
-    expectedAnswers = [
-      item.japanese,
-      item.reading,
-      item.reading.toLowerCase(),
-      // Common romaji variations
-      item.reading.replace(/ou/g, "o").replace(/oo/g, "o").toLowerCase(),
-    ];
-    itemDisplay = `${item.japanese} (${item.reading})`;
+    itemDisplay = `${item.japanese} (${item.reading}) - ${item.meaning}`;
+    itemInfo = `Vocabulary: ${item.japanese} (${item.reading}) meaning "${item.meaning}"`;
   } else if (result.data?.grammarPattern) {
     const item = result.data.grammarPattern;
-    // For grammar, accept acknowledgments like "ok", "got it", "yes", etc.
-    expectedAnswers = ["ok", "okay", "got it", "yes", "hai", "はい", "understood", "i understand"];
     itemDisplay = item.pattern;
+    itemInfo = `Grammar pattern: ${item.pattern} meaning "${item.meaning}"`;
   } else if (result.data?.kanjiItem) {
     const item = result.data.kanjiItem;
-    expectedAnswers = [
-      item.character,
-      ...item.meanings.map(m => m.toLowerCase()),
-      ...item.readings.onyomi,
-      ...item.readings.kunyomi,
-    ];
-    itemDisplay = item.character;
+    itemDisplay = `${item.character} - ${item.meanings.join(", ")}`;
+    itemInfo = `Kanji: ${item.character} meaning "${item.meanings.join(", ")}", readings: ${item.readings.onyomi.join(", ")} / ${item.readings.kunyomi.join(", ")}`;
   }
 
-  // Normalize user input for comparison
-  const normalizedInput = userText.toLowerCase().trim()
-    .replace(/ou/g, "o").replace(/oo/g, "o")
-    .replace(/[.,!?。、！？]/g, "");
-
-  // Check if response is correct or an acknowledgment
-  const isCorrect = expectedAnswers.some(expected =>
-    normalizedInput.includes(expected.toLowerCase()) ||
-    expected.toLowerCase().includes(normalizedInput)
-  );
-  const isAcknowledgment = ["ok", "okay", "got it", "yes", "hai", "はい", "next", "continue", "understood"].some(
-    ack => normalizedInput.includes(ack)
+  // Check for simple acknowledgments first
+  const normalizedInput = userText.toLowerCase().trim();
+  const isAcknowledgment = ["ok", "okay", "got it", "yes", "hai", "はい", "next", "continue", "understood", "うん"].some(
+    ack => normalizedInput === ack || normalizedInput === ack + "."
   );
 
-  if (isCorrect || isAcknowledgment) {
-    // Correct! Give brief acknowledgment and advance
-    const praise = await generateActionResponse(
-      {
-        type: "conversation",
-        message: `User said "${userText}" which is correct for ${itemDisplay}. Just say "Good!" or "That's right!" - ONE short sentence max. No tail wags, no emojis. Then say "Next word:" to signal moving on.`,
-      },
-      context,
-    );
-    await telegram.sendMessage(chatId, praise);
-
-    // Advance to next item
+  if (isAcknowledgment) {
+    // Just acknowledging, move on
+    await telegram.sendMessage(chatId, "Good! Next:");
     await lessonEngine.advanceToNextItem(chatId);
-
     setTimeout(async () => {
       await continueLesson(chatId, context);
-    }, 1500);
+    }, 1000);
+    return "Good! Next:";
+  }
 
-    return praise;
+  // Use LLM to evaluate if the response is correct (handles kanji/hiragana equivalence)
+  const evaluationPrompt = `The student is learning: ${itemInfo}
+
+The student said: "${userText}"
+
+Is this a correct attempt at saying/writing this item? Consider:
+- Kanji and hiragana are equivalent (よろしくお願いします = よろしくおねがいします)
+- Romaji is acceptable (konnichiwa = こんにちは)
+- Minor variations are OK
+
+Reply with ONLY "CORRECT" or "INCORRECT" - nothing else.`;
+
+  const evaluation = await generateActionResponse(
+    { type: "conversation", message: evaluationPrompt },
+    context,
+  );
+
+  const isCorrect = evaluation.toUpperCase().includes("CORRECT") && !evaluation.toUpperCase().includes("INCORRECT");
+
+  if (isCorrect) {
+    await telegram.sendMessage(chatId, "Good! Next:");
+    await lessonEngine.advanceToNextItem(chatId);
+    setTimeout(async () => {
+      await continueLesson(chatId, context);
+    }, 1000);
+    return "Good! Next:";
   } else {
-    // Incorrect - explain and ask to try again
+    // Incorrect - give brief correction
     const correction = await generateActionResponse(
       {
         type: "conversation",
-        message: `User tried "${userText}" but we're learning ${itemDisplay}. Gently correct them (the expected answer was one of: ${expectedAnswers.slice(0, 3).join(", ")}). Ask them to try again. Keep it brief and encouraging.`,
+        message: `User tried "${userText}" but we're practicing ${itemDisplay}. Give a brief correction (1-2 sentences) and ask them to try again. No emojis.`,
       },
       context,
     );
     await telegram.sendMessage(chatId, correction);
-    // Don't advance - wait for them to try again
     return correction;
   }
 }

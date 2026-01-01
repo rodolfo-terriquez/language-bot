@@ -1,4 +1,4 @@
-# Japanese Language Learning Bot (Sakura-sensei)
+# Japanese Language Learning Bot (Emi)
 
 A Telegram bot that teaches Japanese (JLPT N5) through daily conversational lessons over 30 days. Uses a hybrid approach: predefined syllabus structure with LLM-generated exercises and explanations.
 
@@ -9,7 +9,7 @@ A Telegram bot that teaches Japanese (JLPT N5) through daily conversational less
 - **Multiple exercise types**: Translation, reading, grammar formation
 - **Voice input support**: Practice pronunciation with Whisper transcription
 - **Progress tracking**: Streaks, scores, and mastery levels
-- **Sakura-sensei personality**: Patient, encouraging Japanese tutor
+- **Emi personality**: An energetic, adorable dog girl tutor who gets excited when you learn!
 
 ## Setup Instructions
 

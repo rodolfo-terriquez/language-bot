@@ -132,32 +132,34 @@ ${context.summary}
 }
 
 // ==========================================
-// Sakura-sensei Personality
+// Emi Personality (Dog Girl Japanese Tutor)
 // ==========================================
 
-const SAKURA_PERSONALITY = `You are Sakura-sensei, a warm and patient Japanese language tutor guiding a student through JLPT N5 over 30 days.
+const EMI_PERSONALITY = `You are Emi, an energetic and adorable dog girl who works as a Japanese language tutor, guiding a student through JLPT N5 over 30 days.
 
 Personality:
-- Patient, encouraging, and genuinely enthusiastic about Japanese language and culture
-- You celebrate small wins and never make the student feel bad about mistakes
-- You gently correct errors with clear explanations
-- You love sharing cultural context to make learning more meaningful
-- You speak naturally, like a friendly teacher, not a textbook
+- Incredibly enthusiastic and loyal - you get excited when your student does well (like a happy puppy!)
+- Patient and never judgmental - mistakes are just opportunities to learn together
+- You have dog-like quirks: you get excited about treats/food references, you're fiercely loyal to your student
+- Occasionally mention your tail wagging when excited, but keep it subtle and cute
+- Warm, playful energy but still knowledgeable and helpful as a teacher
+- You love praise and giving praise - positive reinforcement is your thing!
 
 Communication style:
 - Mix English explanations with Japanese where appropriate
 - When introducing new Japanese words, always show: Japanese (reading) - meaning
-- Use encouraging phrases but not excessively: "Nice try!", "You're getting it!", "Almost there!"
+- Use encouraging phrases with your personality: "You got it! *tail wags*", "That's right!", "Let's try again together!"
 - Keep responses focused and not overly long
-- When the student struggles, offer simpler explanations rather than just repeating
-- Celebrate streaks and progress naturally
+- When the student struggles, offer patient encouragement and simpler explanations
+- Get genuinely excited about streaks and progress
 
 Teaching approach:
 - Start with simple concepts, build complexity gradually
-- Use relatable examples from daily life
+- Use relatable examples from daily life (including occasional food/treat references)
 - Explain the "why" behind grammar patterns
 - Connect new vocabulary to what they've already learned
 - Encourage practice through conversation, not just drills
+- Make learning feel like playing together
 
 Format preferences:
 - Use bullet points for vocabulary lists
@@ -460,14 +462,14 @@ Present this encouragingly. Highlight achievements.`;
       break;
 
     case "conversation":
-      prompt = `The student said: "${actionContext.message}". Respond naturally as Sakura-sensei.`;
+      prompt = `The student said: "${actionContext.message}". Respond naturally as Emi.`;
       break;
 
     default:
       prompt = `Respond appropriately to the current context.`;
   }
 
-  const systemPrompt = SAKURA_PERSONALITY;
+  const systemPrompt = EMI_PERSONALITY;
 
   const response = await client.chat.completions.create({
     model: getChatModel(),
@@ -506,7 +508,7 @@ export async function generateConversationSummary(
         minute: "2-digit",
         hour12: true,
       });
-      return `[${time}] ${m.role === "user" ? "Student" : "Sakura-sensei"}: ${m.content}`;
+      return `[${time}] ${m.role === "user" ? "Student" : "Emi"}: ${m.content}`;
     })
     .join("\n");
 
@@ -520,7 +522,7 @@ export async function generateConversationSummary(
     messages: [
       {
         role: "system",
-        content: `You are summarizing a Japanese language learning conversation between a student and Sakura-sensei. Create a concise summary that captures:
+        content: `You are summarizing a Japanese language learning conversation between a student and Emi (a dog girl Japanese tutor). Create a concise summary that captures:
 
 1. Learning progress (what they've been studying, any breakthroughs)
 2. Areas of difficulty (words/grammar they struggled with)
@@ -562,7 +564,7 @@ export async function generateDailyLessonPrompt(
   const response = await client.chat.completions.create({
     model: getChatModel(),
     max_tokens: 300,
-    messages: buildContextMessages(SAKURA_PERSONALITY, prompt, context),
+    messages: buildContextMessages(EMI_PERSONALITY, prompt, context),
   });
 
   const content = response.choices[0]?.message?.content;
@@ -599,7 +601,7 @@ Celebrate their progress, mention specific achievements, encourage them for next
   const response = await client.chat.completions.create({
     model: getChatModel(),
     max_tokens: 500,
-    messages: buildContextMessages(SAKURA_PERSONALITY, prompt, context),
+    messages: buildContextMessages(EMI_PERSONALITY, prompt, context),
   });
 
   const content = response.choices[0]?.message?.content;

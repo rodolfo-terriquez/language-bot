@@ -356,7 +356,16 @@ export async function generateActionResponse(
 
   switch (actionContext.type) {
     case "lesson_intro":
-      prompt = `Start Day ${actionContext.dayNumber} lesson: "${actionContext.title}". Topics today: ${actionContext.topics.join(", ")}. Give a warm welcome and brief overview of what we'll learn. Keep it encouraging and exciting!`;
+      prompt = `Start Day ${actionContext.dayNumber} lesson: "${actionContext.title}".
+
+IMPORTANT: This is ONLY the welcome message. DO NOT teach any content yet - that comes in separate messages.
+
+Write a SHORT (2-3 sentences max) excited greeting that:
+- Welcomes them to today's lesson
+- Mentions the theme "${actionContext.title}" briefly
+- Says you'll start with vocabulary
+
+DO NOT: list vocabulary, explain grammar, show examples, or teach anything yet. Just greet them warmly and tell them we're about to start.`;
       break;
 
     case "teaching_vocabulary":
@@ -367,7 +376,7 @@ Meaning: ${actionContext.item.meaning}
 Part of speech: ${actionContext.item.partOfSpeech}
 ${actionContext.item.exampleSentence ? `Example: ${actionContext.item.exampleSentence}` : ""}
 
-Present it clearly, give context for when to use it, and check if they understand before moving on.`;
+Keep it SHORT (3-5 lines max). Present the word, its meaning, and one quick usage tip. End by asking them to try saying/typing it or acknowledge they got it. Don't overwhelm with info.`;
       break;
 
     case "teaching_grammar":
@@ -375,23 +384,22 @@ Present it clearly, give context for when to use it, and check if they understan
 Pattern: ${actionContext.item.pattern}
 Meaning: ${actionContext.item.meaning}
 Formation: ${actionContext.item.formation}
-Examples: ${actionContext.item.examples.map((e) => `${e.japanese} (${e.reading}) - ${e.meaning}`).join("; ")}
+Example: ${actionContext.item.examples[0]?.japanese} - ${actionContext.item.examples[0]?.meaning}
 ${actionContext.item.notes ? `Notes: ${actionContext.item.notes}` : ""}
 
-Explain clearly with examples. Make it relatable.`;
+Keep it SHORT (4-6 lines max). Show the pattern, explain how to form it, give ONE example. Ask if they want to try making a sentence or if they're ready to continue.`;
       break;
 
     case "teaching_kanji":
       prompt = `Teach this kanji (${actionContext.index + 1}/${actionContext.total}):
 Character: ${actionContext.item.character}
 Meanings: ${actionContext.item.meanings.join(", ")}
-On'yomi: ${actionContext.item.readings.onyomi.join(", ")}
-Kun'yomi: ${actionContext.item.readings.kunyomi.join(", ")}
-Stroke count: ${actionContext.item.strokeCount}
+On'yomi: ${actionContext.item.readings.onyomi.join(", ") || "none"}
+Kun'yomi: ${actionContext.item.readings.kunyomi.join(", ") || "none"}
 ${actionContext.item.mnemonics ? `Memory aid: ${actionContext.item.mnemonics}` : ""}
-Examples: ${actionContext.item.examples.map((e) => `${e.word} (${e.reading}) - ${e.meaning}`).join("; ")}
+Example word: ${actionContext.item.examples[0]?.word} (${actionContext.item.examples[0]?.reading}) - ${actionContext.item.examples[0]?.meaning}
 
-Present the kanji, help them remember it, show how it's used.`;
+Keep it SHORT (4-6 lines max). Show the kanji, its main meaning, the mnemonic to remember it, and ONE example word. Ask if they can visualize it or are ready to continue.`;
       break;
 
     case "exercise_prompt":

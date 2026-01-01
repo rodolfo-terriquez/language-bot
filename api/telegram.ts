@@ -78,7 +78,7 @@ export default async function handler(
 
       await telegram.sendMessage(
         chatId,
-        `Welcome! I'm Sakura-sensei, your Japanese language tutor for the next 30 days.\n\nWe'll learn JLPT N5 together through daily lessons.\n\nSay "start lesson" when you're ready!`,
+        `Welcome! I'm Emi, your Japanese language tutor for the next 30 days! *tail wags*\n\nWe'll learn JLPT N5 together through daily lessons.\n\nSay "start lesson" when you're ready!`,
       );
       res.status(200).json({ ok: true });
       return;

@@ -1,0 +1,127 @@
+{
+  "dayNumber": 9,
+  "title": "Family Members",
+  "description": "Learn vocabulary for family members and relationships",
+  "vocabulary": [
+    {
+      "id": "v09_01",
+      "japanese": "かぞく",
+      "reading": "kazoku",
+      "meaning": "family",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v09_02",
+      "japanese": "ちち / おとうさん",
+      "reading": "chichi / otousan",
+      "meaning": "father (my/someone's)",
+      "partOfSpeech": "noun",
+      "exampleSentence": "ちちはかいしゃいんです。",
+      "exampleReading": "Chichi wa kaishain desu.",
+      "exampleMeaning": "My father is a company employee.",
+      "difficulty": 2
+    },
+    {
+      "id": "v09_03",
+      "japanese": "はは / おかあさん",
+      "reading": "haha / okaasan",
+      "meaning": "mother (my/someone's)",
+      "partOfSpeech": "noun",
+      "difficulty": 2
+    },
+    {
+      "id": "v09_04",
+      "japanese": "あに / おにいさん",
+      "reading": "ani / oniisan",
+      "meaning": "older brother (my/someone's)",
+      "partOfSpeech": "noun",
+      "difficulty": 2
+    },
+    {
+      "id": "v09_05",
+      "japanese": "あね / おねえさん",
+      "reading": "ane / oneesan",
+      "meaning": "older sister (my/someone's)",
+      "partOfSpeech": "noun",
+      "difficulty": 2
+    },
+    {
+      "id": "v09_06",
+      "japanese": "おとうと / おとうとさん",
+      "reading": "otouto / otoutosan",
+      "meaning": "younger brother",
+      "partOfSpeech": "noun",
+      "difficulty": 2
+    },
+    {
+      "id": "v09_07",
+      "japanese": "いもうと / いもうとさん",
+      "reading": "imouto / imoutosan",
+      "meaning": "younger sister",
+      "partOfSpeech": "noun",
+      "difficulty": 2
+    }
+  ],
+  "grammar": [
+    {
+      "id": "g09_01",
+      "pattern": "Family word choice (humble vs honorific)",
+      "meaning": "Using different words for your family vs others' families",
+      "formation": "Own family: plain form / Others' family: お〜さん form",
+      "examples": [
+        {
+          "japanese": "ちちはいしゃです。",
+          "reading": "Chichi wa isha desu.",
+          "meaning": "My father is a doctor."
+        },
+        {
+          "japanese": "おとうさんはおげんきですか。",
+          "reading": "Otousan wa ogenki desu ka.",
+          "meaning": "Is your father well?"
+        }
+      ],
+      "notes": "Use humble terms (ちち, はは) for your own family. Use honorific terms (おとうさん, おかあさん) for others' families or when speaking to your own parents.",
+      "difficulty": 2
+    }
+  ],
+  "kanji": [
+    {
+      "id": "k09_01",
+      "character": "六",
+      "readings": {
+        "onyomi": ["ロク"],
+        "kunyomi": ["む", "むっ"]
+      },
+      "meanings": ["six"],
+      "strokeCount": 4,
+      "examples": [
+        {"word": "六つ", "reading": "むっつ", "meaning": "six (things)"},
+        {"word": "六月", "reading": "ろくがつ", "meaning": "June"}
+      ],
+      "mnemonics": "Looks like a person with arms raised - six limbs if you count the head!"
+    },
+    {
+      "id": "k09_02",
+      "character": "七",
+      "readings": {
+        "onyomi": ["シチ"],
+        "kunyomi": ["なな", "なの"]
+      },
+      "meanings": ["seven"],
+      "strokeCount": 2,
+      "examples": [
+        {"word": "七つ", "reading": "ななつ", "meaning": "seven (things)"},
+        {"word": "七月", "reading": "しちがつ", "meaning": "July"}
+      ],
+      "mnemonics": "An upside-down 7 - or a person bending over."
+    }
+  ],
+  "culturalNote": "Japanese has different words for family members depending on whether you're talking about your own family or someone else's. This reflects the importance of humility (謙譲語) and respect (尊敬語) in Japanese culture.",
+  "practiceGoals": [
+    "Name immediate family members",
+    "Use appropriate humble/honorific forms",
+    "Talk about your family"
+  ],
+  "estimatedMinutes": 30
+}

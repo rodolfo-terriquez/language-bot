@@ -1,0 +1,139 @@
+{
+  "dayNumber": 27,
+  "title": "Expressing Desire & Plans",
+  "description": "Learn to talk about what you want to do and your plans",
+  "vocabulary": [
+    {
+      "id": "v27_01",
+      "japanese": "〜たい",
+      "reading": "tai",
+      "meaning": "want to ~",
+      "partOfSpeech": "auxiliary",
+      "exampleSentence": "にほんにいきたいです。",
+      "exampleReading": "Nihon ni ikitai desu.",
+      "exampleMeaning": "I want to go to Japan.",
+      "difficulty": 1
+    },
+    {
+      "id": "v27_02",
+      "japanese": "つもり",
+      "reading": "tsumori",
+      "meaning": "plan / intention",
+      "partOfSpeech": "noun",
+      "difficulty": 2
+    },
+    {
+      "id": "v27_03",
+      "japanese": "よてい",
+      "reading": "yotei",
+      "meaning": "plan / schedule",
+      "partOfSpeech": "noun",
+      "difficulty": 2
+    },
+    {
+      "id": "v27_04",
+      "japanese": "りょこう",
+      "reading": "ryokou",
+      "meaning": "trip / travel",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v27_05",
+      "japanese": "やすみ",
+      "reading": "yasumi",
+      "meaning": "holiday / rest / break",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v27_06",
+      "japanese": "しょうらい",
+      "reading": "shourai",
+      "meaning": "future",
+      "partOfSpeech": "noun",
+      "difficulty": 2
+    }
+  ],
+  "grammar": [
+    {
+      "id": "g27_01",
+      "pattern": "Verb stem + たい",
+      "meaning": "Want to do ~",
+      "formation": "[Verb stem] + たいです",
+      "examples": [
+        {
+          "japanese": "すしをたべたいです。",
+          "reading": "Sushi wo tabetai desu.",
+          "meaning": "I want to eat sushi."
+        },
+        {
+          "japanese": "にほんごをもっとべんきょうしたいです。",
+          "reading": "Nihongo wo motto benkyou shitai desu.",
+          "meaning": "I want to study Japanese more."
+        }
+      ],
+      "notes": "たい conjugates like an い-adjective: たくない (don't want), たかった (wanted).",
+      "difficulty": 2
+    },
+    {
+      "id": "g27_02",
+      "pattern": "Verb dictionary form + つもりです",
+      "meaning": "Plan to / Intend to",
+      "formation": "[Verb dictionary form] + つもりです",
+      "examples": [
+        {
+          "japanese": "らいねんにほんにいくつもりです。",
+          "reading": "Rainen Nihon ni iku tsumori desu.",
+          "meaning": "I plan to go to Japan next year."
+        },
+        {
+          "japanese": "あしたはやくおきるつもりです。",
+          "reading": "Ashita hayaku okiru tsumori desu.",
+          "meaning": "I intend to wake up early tomorrow."
+        }
+      ],
+      "notes": "つもり shows a firm intention. For schedules/appointments, use よてい instead.",
+      "difficulty": 2
+    }
+  ],
+  "kanji": [
+    {
+      "id": "k27_01",
+      "character": "休",
+      "readings": {
+        "onyomi": ["キュウ"],
+        "kunyomi": ["やす"]
+      },
+      "meanings": ["rest", "holiday"],
+      "strokeCount": 6,
+      "examples": [
+        {"word": "休む", "reading": "やすむ", "meaning": "to rest"},
+        {"word": "休み", "reading": "やすみ", "meaning": "holiday/rest"}
+      ],
+      "mnemonics": "A person (亻) leaning against a tree (木) - resting."
+    },
+    {
+      "id": "k27_02",
+      "character": "何",
+      "readings": {
+        "onyomi": ["カ"],
+        "kunyomi": ["なに", "なん"]
+      },
+      "meanings": ["what"],
+      "strokeCount": 7,
+      "examples": [
+        {"word": "何", "reading": "なに/なん", "meaning": "what"},
+        {"word": "何時", "reading": "なんじ", "meaning": "what time"}
+      ],
+      "mnemonics": "A person (亻) with something (可) - asking 'what is that?'"
+    }
+  ],
+  "culturalNote": "In Japanese, you usually don't directly ask someone else '何がしたいですか' (what do you want to do?) as it can put pressure on them. Instead, offer options: 'コーヒーとおちゃ、どちらがいいですか' (Coffee or tea, which is good?).",
+  "practiceGoals": [
+    "Express wants with たい",
+    "Talk about plans with つもり",
+    "Conjugate たい like an い-adjective"
+  ],
+  "estimatedMinutes": 25
+}

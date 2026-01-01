@@ -1,0 +1,129 @@
+{
+  "dayNumber": 6,
+  "title": "Time & Hours",
+  "description": "Learn to tell time and talk about hours in Japanese",
+  "vocabulary": [
+    {
+      "id": "v06_01",
+      "japanese": "いま",
+      "reading": "ima",
+      "meaning": "now",
+      "partOfSpeech": "noun",
+      "exampleSentence": "いまなんじですか。",
+      "exampleReading": "Ima nanji desu ka.",
+      "exampleMeaning": "What time is it now?",
+      "difficulty": 1
+    },
+    {
+      "id": "v06_02",
+      "japanese": "じ",
+      "reading": "ji",
+      "meaning": "o'clock (hour counter)",
+      "partOfSpeech": "counter",
+      "exampleSentence": "さんじです。",
+      "exampleReading": "San-ji desu.",
+      "exampleMeaning": "It's 3 o'clock.",
+      "difficulty": 1
+    },
+    {
+      "id": "v06_03",
+      "japanese": "ふん / ぷん",
+      "reading": "fun / pun",
+      "meaning": "minute",
+      "partOfSpeech": "counter",
+      "exampleSentence": "じゅうごふんです。",
+      "exampleReading": "Juugo-fun desu.",
+      "exampleMeaning": "It's 15 minutes.",
+      "difficulty": 2
+    },
+    {
+      "id": "v06_04",
+      "japanese": "ごぜん",
+      "reading": "gozen",
+      "meaning": "AM / morning",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v06_05",
+      "japanese": "ごご",
+      "reading": "gogo",
+      "meaning": "PM / afternoon",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v06_06",
+      "japanese": "はん",
+      "reading": "han",
+      "meaning": "half (past)",
+      "partOfSpeech": "noun",
+      "exampleSentence": "くじはんです。",
+      "exampleReading": "Ku-ji han desu.",
+      "exampleMeaning": "It's half past 9.",
+      "difficulty": 1
+    }
+  ],
+  "grammar": [
+    {
+      "id": "g06_01",
+      "pattern": "〜じ〜ふん",
+      "meaning": "X hours Y minutes",
+      "formation": "[Hour]じ [Minutes]ふん",
+      "examples": [
+        {
+          "japanese": "にじじゅっぷんです。",
+          "reading": "Ni-ji juppun desu.",
+          "meaning": "It's 2:10."
+        },
+        {
+          "japanese": "ごぜんしちじさんじゅっぷんにおきます。",
+          "reading": "Gozen shichi-ji sanjuppun ni okimasu.",
+          "meaning": "I wake up at 7:30 AM."
+        }
+      ],
+      "notes": "Minutes change pronunciation: 1,3,4,6,8,10 use ぷん (pun). Others use ふん (fun).",
+      "difficulty": 2
+    }
+  ],
+  "kanji": [
+    {
+      "id": "k06_01",
+      "character": "一",
+      "readings": {
+        "onyomi": ["イチ", "イツ"],
+        "kunyomi": ["ひと"]
+      },
+      "meanings": ["one"],
+      "strokeCount": 1,
+      "examples": [
+        {"word": "一つ", "reading": "ひとつ", "meaning": "one (thing)"},
+        {"word": "一人", "reading": "ひとり", "meaning": "one person"}
+      ],
+      "mnemonics": "A single horizontal line - the simplest representation of 'one'."
+    },
+    {
+      "id": "k06_02",
+      "character": "二",
+      "readings": {
+        "onyomi": ["ニ"],
+        "kunyomi": ["ふた"]
+      },
+      "meanings": ["two"],
+      "strokeCount": 2,
+      "examples": [
+        {"word": "二つ", "reading": "ふたつ", "meaning": "two (things)"},
+        {"word": "二人", "reading": "ふたり", "meaning": "two people"}
+      ],
+      "mnemonics": "Two horizontal lines stacked - easy to count!"
+    }
+  ],
+  "culturalNote": "Japanese people are known for punctuality. Being even a few minutes late is considered rude. Trains in Japan are famous for their precise timing!",
+  "practiceGoals": [
+    "Tell the current time",
+    "Ask what time it is",
+    "Understand AM/PM distinction",
+    "Use half-past expressions"
+  ],
+  "estimatedMinutes": 25
+}

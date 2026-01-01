@@ -1,0 +1,155 @@
+{
+  "dayNumber": 23,
+  "title": "At a Restaurant",
+  "description": "Learn vocabulary and phrases for ordering food",
+  "vocabulary": [
+    {
+      "id": "v23_01",
+      "japanese": "メニュー",
+      "reading": "menyuu",
+      "meaning": "menu",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v23_02",
+      "japanese": "ちゅうもん",
+      "reading": "chuumon",
+      "meaning": "order (noun)",
+      "partOfSpeech": "noun",
+      "exampleSentence": "ごちゅうもんはおきまりですか。",
+      "exampleReading": "Go-chuumon wa okimari desu ka.",
+      "exampleMeaning": "Are you ready to order?",
+      "difficulty": 2
+    },
+    {
+      "id": "v23_03",
+      "japanese": "おねがいします",
+      "reading": "onegaishimasu",
+      "meaning": "please (request)",
+      "partOfSpeech": "expression",
+      "difficulty": 1
+    },
+    {
+      "id": "v23_04",
+      "japanese": "おかんじょう",
+      "reading": "okanjou",
+      "meaning": "the bill / check",
+      "partOfSpeech": "noun",
+      "difficulty": 2
+    },
+    {
+      "id": "v23_05",
+      "japanese": "べつべつに",
+      "reading": "betsubetsu ni",
+      "meaning": "separately (for bills)",
+      "partOfSpeech": "adverb",
+      "difficulty": 2
+    },
+    {
+      "id": "v23_06",
+      "japanese": "いっしょに",
+      "reading": "issho ni",
+      "meaning": "together",
+      "partOfSpeech": "adverb",
+      "difficulty": 1
+    },
+    {
+      "id": "v23_07",
+      "japanese": "いただきます",
+      "reading": "itadakimasu",
+      "meaning": "I humbly receive (before eating)",
+      "partOfSpeech": "expression",
+      "difficulty": 1
+    },
+    {
+      "id": "v23_08",
+      "japanese": "ごちそうさまでした",
+      "reading": "gochisousama deshita",
+      "meaning": "thank you for the meal (after eating)",
+      "partOfSpeech": "expression",
+      "difficulty": 1
+    }
+  ],
+  "grammar": [
+    {
+      "id": "g23_01",
+      "pattern": "〜を おねがいします",
+      "meaning": "I'd like ~ please",
+      "formation": "[Noun] を おねがいします",
+      "examples": [
+        {
+          "japanese": "ビールをおねがいします。",
+          "reading": "Biiru wo onegaishimasu.",
+          "meaning": "A beer, please."
+        },
+        {
+          "japanese": "おかんじょうをおねがいします。",
+          "reading": "Okanjou wo onegaishimasu.",
+          "meaning": "The check, please."
+        }
+      ],
+      "notes": "More polite than ください. Common in restaurants and service situations.",
+      "difficulty": 1
+    },
+    {
+      "id": "g23_02",
+      "pattern": "〜に します",
+      "meaning": "I'll have ~ / I'll decide on ~",
+      "formation": "[Noun] に します",
+      "examples": [
+        {
+          "japanese": "わたしはラーメンにします。",
+          "reading": "Watashi wa raamen ni shimasu.",
+          "meaning": "I'll have ramen."
+        },
+        {
+          "japanese": "のみものはコーヒーにします。",
+          "reading": "Nomimono wa koohii ni shimasu.",
+          "meaning": "For my drink, I'll have coffee."
+        }
+      ],
+      "notes": "Use when making a choice/decision. Very natural for ordering.",
+      "difficulty": 2
+    }
+  ],
+  "kanji": [
+    {
+      "id": "k23_01",
+      "character": "食",
+      "readings": {
+        "onyomi": ["ショク"],
+        "kunyomi": ["た"]
+      },
+      "meanings": ["eat", "food"],
+      "strokeCount": 9,
+      "examples": [
+        {"word": "食べる", "reading": "たべる", "meaning": "to eat"},
+        {"word": "食事", "reading": "しょくじ", "meaning": "meal"}
+      ],
+      "mnemonics": "A person sitting at a table with food - good (良) combined with eating."
+    },
+    {
+      "id": "k23_02",
+      "character": "飲",
+      "readings": {
+        "onyomi": ["イン"],
+        "kunyomi": ["の"]
+      },
+      "meanings": ["drink"],
+      "strokeCount": 12,
+      "examples": [
+        {"word": "飲む", "reading": "のむ", "meaning": "to drink"},
+        {"word": "飲み物", "reading": "のみもの", "meaning": "beverage"}
+      ],
+      "mnemonics": "Food/eating radical with a person opening their mouth to drink."
+    }
+  ],
+  "culturalNote": "Always say いただきます before eating (hands together in a small bow) and ごちそうさまでした after finishing. At restaurants, call the server with すみません! Tipping is not customary in Japan - excellent service is expected by default.",
+  "practiceGoals": [
+    "Order food at a restaurant",
+    "Ask for the check",
+    "Use mealtime expressions properly"
+  ],
+  "estimatedMinutes": 25
+}

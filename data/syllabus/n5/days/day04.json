@@ -1,0 +1,151 @@
+{
+  "dayNumber": 4,
+  "title": "Basic Particles は, を, に",
+  "description": "Master essential Japanese particles for building sentences",
+  "vocabulary": [
+    {
+      "id": "v04_01",
+      "japanese": "たべます",
+      "reading": "tabemasu",
+      "meaning": "to eat (polite)",
+      "partOfSpeech": "verb",
+      "exampleSentence": "ごはんをたべます。",
+      "exampleReading": "Gohan wo tabemasu.",
+      "exampleMeaning": "I eat rice/meal.",
+      "difficulty": 1
+    },
+    {
+      "id": "v04_02",
+      "japanese": "のみます",
+      "reading": "nomimasu",
+      "meaning": "to drink (polite)",
+      "partOfSpeech": "verb",
+      "exampleSentence": "みずをのみます。",
+      "exampleReading": "Mizu wo nomimasu.",
+      "exampleMeaning": "I drink water.",
+      "difficulty": 1
+    },
+    {
+      "id": "v04_03",
+      "japanese": "いきます",
+      "reading": "ikimasu",
+      "meaning": "to go (polite)",
+      "partOfSpeech": "verb",
+      "exampleSentence": "がっこうにいきます。",
+      "exampleReading": "Gakkou ni ikimasu.",
+      "exampleMeaning": "I go to school.",
+      "difficulty": 1
+    },
+    {
+      "id": "v04_04",
+      "japanese": "ごはん",
+      "reading": "gohan",
+      "meaning": "rice / meal",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v04_05",
+      "japanese": "みず",
+      "reading": "mizu",
+      "meaning": "water",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v04_06",
+      "japanese": "おちゃ",
+      "reading": "ocha",
+      "meaning": "green tea",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v04_07",
+      "japanese": "がっこう",
+      "reading": "gakkou",
+      "meaning": "school",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v04_08",
+      "japanese": "うち",
+      "reading": "uchi",
+      "meaning": "home / house",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    }
+  ],
+  "grammar": [
+    {
+      "id": "g04_01",
+      "pattern": "を (object marker)",
+      "meaning": "Marks the direct object of an action",
+      "formation": "[Object] を [Verb]",
+      "examples": [
+        {
+          "japanese": "ほんをよみます。",
+          "reading": "Hon wo yomimasu.",
+          "meaning": "I read a book."
+        },
+        {
+          "japanese": "コーヒーをのみます。",
+          "reading": "Koohii wo nomimasu.",
+          "meaning": "I drink coffee."
+        }
+      ],
+      "notes": "を (wo/o) marks what receives the action. It's pronounced 'o' but written 'wo'.",
+      "difficulty": 1
+    },
+    {
+      "id": "g04_02",
+      "pattern": "に (destination/time marker)",
+      "meaning": "Indicates destination, time, or indirect object",
+      "formation": "[Place/Time] に [Verb]",
+      "examples": [
+        {
+          "japanese": "にほんにいきます。",
+          "reading": "Nihon ni ikimasu.",
+          "meaning": "I go to Japan."
+        },
+        {
+          "japanese": "ななじにおきます。",
+          "reading": "Nana-ji ni okimasu.",
+          "meaning": "I wake up at 7 o'clock."
+        }
+      ],
+      "notes": "に has many uses! Today we focus on destination (going TO somewhere) and specific times.",
+      "difficulty": 2
+    },
+    {
+      "id": "g04_03",
+      "pattern": "〜ます form (polite verbs)",
+      "meaning": "Polite present/future tense",
+      "formation": "Verb stem + ます",
+      "examples": [
+        {
+          "japanese": "まいにちべんきょうします。",
+          "reading": "Mainichi benkyou shimasu.",
+          "meaning": "I study every day."
+        },
+        {
+          "japanese": "あしたいきます。",
+          "reading": "Ashita ikimasu.",
+          "meaning": "I will go tomorrow."
+        }
+      ],
+      "notes": "〜ます verbs are polite and safe to use in any situation. They can express both present habit and future intention.",
+      "difficulty": 1
+    }
+  ],
+  "kanji": [],
+  "culturalNote": "Japanese particles are the glue of the language. Unlike English which relies on word order, Japanese uses particles to show the role of each word. This allows for flexible word order - the verb just needs to come at the end!",
+  "practiceGoals": [
+    "Create sentences with を and に",
+    "Talk about eating and drinking habits",
+    "Express where you go",
+    "Use polite ます form verbs"
+  ],
+  "estimatedMinutes": 30
+}

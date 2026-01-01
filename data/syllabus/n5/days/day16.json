@@ -1,0 +1,139 @@
+{
+  "dayNumber": 16,
+  "title": "い-Adjectives",
+  "description": "Learn adjectives that end in い and how to use them",
+  "vocabulary": [
+    {
+      "id": "v16_01",
+      "japanese": "おおきい",
+      "reading": "ookii",
+      "meaning": "big / large",
+      "partOfSpeech": "i-adjective",
+      "exampleSentence": "これはおおきいいぬです。",
+      "exampleReading": "Kore wa ookii inu desu.",
+      "exampleMeaning": "This is a big dog.",
+      "difficulty": 1
+    },
+    {
+      "id": "v16_02",
+      "japanese": "ちいさい",
+      "reading": "chiisai",
+      "meaning": "small / little",
+      "partOfSpeech": "i-adjective",
+      "difficulty": 1
+    },
+    {
+      "id": "v16_03",
+      "japanese": "たかい",
+      "reading": "takai",
+      "meaning": "high / expensive",
+      "partOfSpeech": "i-adjective",
+      "difficulty": 1
+    },
+    {
+      "id": "v16_04",
+      "japanese": "やすい",
+      "reading": "yasui",
+      "meaning": "cheap / inexpensive",
+      "partOfSpeech": "i-adjective",
+      "difficulty": 1
+    },
+    {
+      "id": "v16_05",
+      "japanese": "あたらしい",
+      "reading": "atarashii",
+      "meaning": "new",
+      "partOfSpeech": "i-adjective",
+      "difficulty": 1
+    },
+    {
+      "id": "v16_06",
+      "japanese": "ふるい",
+      "reading": "furui",
+      "meaning": "old (things, not people)",
+      "partOfSpeech": "i-adjective",
+      "difficulty": 1
+    }
+  ],
+  "grammar": [
+    {
+      "id": "g16_01",
+      "pattern": "い-Adj + Noun",
+      "meaning": "Describing nouns with い-adjectives",
+      "formation": "[い-adjective] + [Noun]",
+      "examples": [
+        {
+          "japanese": "あたらしいくるまがほしいです。",
+          "reading": "Atarashii kuruma ga hoshii desu.",
+          "meaning": "I want a new car."
+        },
+        {
+          "japanese": "やすいレストランをさがしています。",
+          "reading": "Yasui resutoran wo sagashite imasu.",
+          "meaning": "I'm looking for a cheap restaurant."
+        }
+      ],
+      "notes": "い-adjectives go directly before nouns without any particle.",
+      "difficulty": 1
+    },
+    {
+      "id": "g16_02",
+      "pattern": "い-Adj (negative)",
+      "meaning": "Negative form of い-adjectives",
+      "formation": "[い-adjective stem] + くない",
+      "examples": [
+        {
+          "japanese": "このほんはたかくないです。",
+          "reading": "Kono hon wa takakunai desu.",
+          "meaning": "This book is not expensive."
+        },
+        {
+          "japanese": "きょうはあつくないです。",
+          "reading": "Kyou wa atsukunai desu.",
+          "meaning": "Today is not hot."
+        }
+      ],
+      "notes": "Remove い and add くない. For polite form, add です after くない.",
+      "difficulty": 2
+    }
+  ],
+  "kanji": [
+    {
+      "id": "k16_01",
+      "character": "大",
+      "readings": {
+        "onyomi": ["ダイ", "タイ"],
+        "kunyomi": ["おお"]
+      },
+      "meanings": ["big", "large", "great"],
+      "strokeCount": 3,
+      "examples": [
+        {"word": "大きい", "reading": "おおきい", "meaning": "big"},
+        {"word": "大学", "reading": "だいがく", "meaning": "university"}
+      ],
+      "mnemonics": "A person spreading their arms wide to show something big."
+    },
+    {
+      "id": "k16_02",
+      "character": "小",
+      "readings": {
+        "onyomi": ["ショウ"],
+        "kunyomi": ["ちい", "こ", "お"]
+      },
+      "meanings": ["small", "little"],
+      "strokeCount": 3,
+      "examples": [
+        {"word": "小さい", "reading": "ちいさい", "meaning": "small"},
+        {"word": "小学校", "reading": "しょうがっこう", "meaning": "elementary school"}
+      ],
+      "mnemonics": "Something being divided into smaller pieces."
+    }
+  ],
+  "culturalNote": "Japanese has two main types of adjectives: い-adjectives and な-adjectives. They conjugate differently! い-adjectives conjugate by themselves, while な-adjectives use the copula (です/だ).",
+  "practiceGoals": [
+    "Use い-adjectives to describe things",
+    "Form negative い-adjectives",
+    "Combine adjectives with nouns"
+  ],
+  "estimatedMinutes": 25
+}

@@ -1,0 +1,120 @@
+{
+  "dayNumber": 2,
+  "title": "Numbers 1-10 & Counting",
+  "description": "Master Japanese numbers 1-10 and basic counting",
+  "vocabulary": [
+    {
+      "id": "v02_01",
+      "japanese": "いち",
+      "reading": "ichi",
+      "meaning": "one (1)",
+      "partOfSpeech": "number",
+      "difficulty": 1
+    },
+    {
+      "id": "v02_02",
+      "japanese": "に",
+      "reading": "ni",
+      "meaning": "two (2)",
+      "partOfSpeech": "number",
+      "difficulty": 1
+    },
+    {
+      "id": "v02_03",
+      "japanese": "さん",
+      "reading": "san",
+      "meaning": "three (3)",
+      "partOfSpeech": "number",
+      "difficulty": 1
+    },
+    {
+      "id": "v02_04",
+      "japanese": "よん / し",
+      "reading": "yon / shi",
+      "meaning": "four (4)",
+      "partOfSpeech": "number",
+      "exampleSentence": "よにんかぞくです。",
+      "exampleReading": "Yonin kazoku desu.",
+      "exampleMeaning": "It's a family of four.",
+      "difficulty": 2
+    },
+    {
+      "id": "v02_05",
+      "japanese": "ご",
+      "reading": "go",
+      "meaning": "five (5)",
+      "partOfSpeech": "number",
+      "difficulty": 1
+    },
+    {
+      "id": "v02_06",
+      "japanese": "ろく",
+      "reading": "roku",
+      "meaning": "six (6)",
+      "partOfSpeech": "number",
+      "difficulty": 1
+    },
+    {
+      "id": "v02_07",
+      "japanese": "なな / しち",
+      "reading": "nana / shichi",
+      "meaning": "seven (7)",
+      "partOfSpeech": "number",
+      "difficulty": 2
+    },
+    {
+      "id": "v02_08",
+      "japanese": "はち",
+      "reading": "hachi",
+      "meaning": "eight (8)",
+      "partOfSpeech": "number",
+      "difficulty": 1
+    },
+    {
+      "id": "v02_09",
+      "japanese": "きゅう / く",
+      "reading": "kyuu / ku",
+      "meaning": "nine (9)",
+      "partOfSpeech": "number",
+      "difficulty": 2
+    },
+    {
+      "id": "v02_10",
+      "japanese": "じゅう",
+      "reading": "juu",
+      "meaning": "ten (10)",
+      "partOfSpeech": "number",
+      "difficulty": 1
+    }
+  ],
+  "grammar": [
+    {
+      "id": "g02_01",
+      "pattern": "〜つ (counter)",
+      "meaning": "General counter for objects",
+      "formation": "[Number]つ",
+      "examples": [
+        {
+          "japanese": "りんごをひとつください。",
+          "reading": "Ringo wo hitotsu kudasai.",
+          "meaning": "One apple, please."
+        },
+        {
+          "japanese": "みっつあります。",
+          "reading": "Mittsu arimasu.",
+          "meaning": "There are three."
+        }
+      ],
+      "notes": "The つ counter uses native Japanese numbers (ひとつ, ふたつ, みっつ...) up to 10, then switches to Chinese-derived numbers.",
+      "difficulty": 2
+    }
+  ],
+  "kanji": [],
+  "culturalNote": "Numbers 4 (shi) and 9 (ku) have alternative readings because 'shi' sounds like 'death' and 'ku' sounds like 'suffering'. Japanese people often avoid these readings, especially in hospitals!",
+  "practiceGoals": [
+    "Count from 1 to 10 in Japanese",
+    "Recognize both readings for 4, 7, and 9",
+    "Use the つ counter for simple objects"
+  ],
+  "estimatedMinutes": 20
+}

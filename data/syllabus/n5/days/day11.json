@@ -1,0 +1,134 @@
+{
+  "dayNumber": 11,
+  "title": "Common Verbs",
+  "description": "Learn essential action verbs for daily communication",
+  "vocabulary": [
+    {
+      "id": "v11_01",
+      "japanese": "みます",
+      "reading": "mimasu",
+      "meaning": "to see / watch / look",
+      "partOfSpeech": "verb",
+      "exampleSentence": "テレビをみます。",
+      "exampleReading": "Terebi wo mimasu.",
+      "exampleMeaning": "I watch TV.",
+      "difficulty": 1
+    },
+    {
+      "id": "v11_02",
+      "japanese": "ききます",
+      "reading": "kikimasu",
+      "meaning": "to hear / listen / ask",
+      "partOfSpeech": "verb",
+      "exampleSentence": "おんがくをききます。",
+      "exampleReading": "Ongaku wo kikimasu.",
+      "exampleMeaning": "I listen to music.",
+      "difficulty": 1
+    },
+    {
+      "id": "v11_03",
+      "japanese": "よみます",
+      "reading": "yomimasu",
+      "meaning": "to read",
+      "partOfSpeech": "verb",
+      "exampleSentence": "しんぶんをよみます。",
+      "exampleReading": "Shinbun wo yomimasu.",
+      "exampleMeaning": "I read the newspaper.",
+      "difficulty": 1
+    },
+    {
+      "id": "v11_04",
+      "japanese": "かきます",
+      "reading": "kakimasu",
+      "meaning": "to write",
+      "partOfSpeech": "verb",
+      "exampleSentence": "てがみをかきます。",
+      "exampleReading": "Tegami wo kakimasu.",
+      "exampleMeaning": "I write a letter.",
+      "difficulty": 1
+    },
+    {
+      "id": "v11_05",
+      "japanese": "かいます",
+      "reading": "kaimasu",
+      "meaning": "to buy",
+      "partOfSpeech": "verb",
+      "exampleSentence": "ほんをかいます。",
+      "exampleReading": "Hon wo kaimasu.",
+      "exampleMeaning": "I buy a book.",
+      "difficulty": 1
+    },
+    {
+      "id": "v11_06",
+      "japanese": "あいます",
+      "reading": "aimasu",
+      "meaning": "to meet",
+      "partOfSpeech": "verb",
+      "exampleSentence": "ともだちにあいます。",
+      "exampleReading": "Tomodachi ni aimasu.",
+      "exampleMeaning": "I meet a friend.",
+      "difficulty": 1
+    }
+  ],
+  "grammar": [
+    {
+      "id": "g11_01",
+      "pattern": "〜ません (negative)",
+      "meaning": "Do not / Does not",
+      "formation": "Verb stem + ません",
+      "examples": [
+        {
+          "japanese": "にくをたべません。",
+          "reading": "Niku wo tabemasen.",
+          "meaning": "I don't eat meat."
+        },
+        {
+          "japanese": "コーヒーをのみません。",
+          "reading": "Koohii wo nomimasen.",
+          "meaning": "I don't drink coffee."
+        }
+      ],
+      "notes": "Change ます to ません for polite negative. This works for all ます-form verbs.",
+      "difficulty": 1
+    }
+  ],
+  "kanji": [
+    {
+      "id": "k11_01",
+      "character": "月",
+      "readings": {
+        "onyomi": ["ゲツ", "ガツ"],
+        "kunyomi": ["つき"]
+      },
+      "meanings": ["moon", "month"],
+      "strokeCount": 4,
+      "examples": [
+        {"word": "月曜日", "reading": "げつようび", "meaning": "Monday"},
+        {"word": "一月", "reading": "いちがつ", "meaning": "January"}
+      ],
+      "mnemonics": "A crescent moon shape with two lines inside."
+    },
+    {
+      "id": "k11_02",
+      "character": "火",
+      "readings": {
+        "onyomi": ["カ"],
+        "kunyomi": ["ひ"]
+      },
+      "meanings": ["fire"],
+      "strokeCount": 4,
+      "examples": [
+        {"word": "火曜日", "reading": "かようび", "meaning": "Tuesday"},
+        {"word": "火事", "reading": "かじ", "meaning": "fire (disaster)"}
+      ],
+      "mnemonics": "A person with flames rising up from them."
+    }
+  ],
+  "culturalNote": "Many Japanese verbs are formed by adding する (suru) to nouns, like べんきょうする (to study) or りょうりする (to cook). This is very productive in Japanese!",
+  "practiceGoals": [
+    "Use common action verbs",
+    "Create negative sentences with ません",
+    "Combine verbs with objects using を"
+  ],
+  "estimatedMinutes": 25
+}

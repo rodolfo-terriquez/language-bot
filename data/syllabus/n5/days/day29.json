@@ -1,0 +1,144 @@
+{
+  "dayNumber": 29,
+  "title": "Comprehensive Review Part 1",
+  "description": "Review vocabulary and grammar from weeks 1-3",
+  "vocabulary": [
+    {
+      "id": "v29_01",
+      "japanese": "ぜんぶ",
+      "reading": "zenbu",
+      "meaning": "all / everything",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v29_02",
+      "japanese": "だいたい",
+      "reading": "daitai",
+      "meaning": "mostly / approximately",
+      "partOfSpeech": "adverb",
+      "difficulty": 1
+    },
+    {
+      "id": "v29_03",
+      "japanese": "ときどき",
+      "reading": "tokidoki",
+      "meaning": "sometimes",
+      "partOfSpeech": "adverb",
+      "difficulty": 1
+    },
+    {
+      "id": "v29_04",
+      "japanese": "よく",
+      "reading": "yoku",
+      "meaning": "often / well",
+      "partOfSpeech": "adverb",
+      "difficulty": 1
+    },
+    {
+      "id": "v29_05",
+      "japanese": "あまり",
+      "reading": "amari",
+      "meaning": "not very / not much",
+      "partOfSpeech": "adverb",
+      "exampleSentence": "あまりすきじゃないです。",
+      "exampleReading": "Amari suki ja nai desu.",
+      "exampleMeaning": "I don't really like it.",
+      "difficulty": 1
+    },
+    {
+      "id": "v29_06",
+      "japanese": "ぜんぜん",
+      "reading": "zenzen",
+      "meaning": "not at all (with negative)",
+      "partOfSpeech": "adverb",
+      "difficulty": 1
+    }
+  ],
+  "grammar": [
+    {
+      "id": "g29_01",
+      "pattern": "Frequency adverbs review",
+      "meaning": "How often you do things",
+      "formation": "いつも > よく > ときどき > あまり > ぜんぜん",
+      "examples": [
+        {
+          "japanese": "いつもあさごはんをたべます。",
+          "reading": "Itsumo asagohan wo tabemasu.",
+          "meaning": "I always eat breakfast."
+        },
+        {
+          "japanese": "あまりえいがをみません。",
+          "reading": "Amari eiga wo mimasen.",
+          "meaning": "I don't watch movies much."
+        },
+        {
+          "japanese": "ぜんぜんわかりません。",
+          "reading": "Zenzen wakarimasen.",
+          "meaning": "I don't understand at all."
+        }
+      ],
+      "notes": "あまり and ぜんぜん require negative verb forms.",
+      "difficulty": 1
+    },
+    {
+      "id": "g29_02",
+      "pattern": "Review: Particle summary",
+      "meaning": "Key particles and their uses",
+      "formation": "は (topic), が (subject), を (object), に (destination/time), で (location/means), へ (direction), と (with)",
+      "examples": [
+        {
+          "japanese": "わたしはともだちとレストランでひるごはんをたべます。",
+          "reading": "Watashi wa tomodachi to resutoran de hirugohan wo tabemasu.",
+          "meaning": "I eat lunch with my friend at a restaurant."
+        },
+        {
+          "japanese": "くじにでんしゃでかいしゃにいきます。",
+          "reading": "Ku-ji ni densha de kaisha ni ikimasu.",
+          "meaning": "I go to the company by train at 9 o'clock."
+        }
+      ],
+      "notes": "Master these particles - they're the backbone of Japanese sentences!",
+      "difficulty": 2
+    }
+  ],
+  "kanji": [
+    {
+      "id": "k29_01",
+      "character": "話",
+      "readings": {
+        "onyomi": ["ワ"],
+        "kunyomi": ["はな", "はなし"]
+      },
+      "meanings": ["talk", "speak", "story"],
+      "strokeCount": 13,
+      "examples": [
+        {"word": "話す", "reading": "はなす", "meaning": "to speak"},
+        {"word": "電話", "reading": "でんわ", "meaning": "telephone"}
+      ],
+      "mnemonics": "Words/speech (言) and tongue (舌) - the tools for talking."
+    },
+    {
+      "id": "k29_02",
+      "character": "語",
+      "readings": {
+        "onyomi": ["ゴ"],
+        "kunyomi": ["かた"]
+      },
+      "meanings": ["language", "word"],
+      "strokeCount": 14,
+      "examples": [
+        {"word": "日本語", "reading": "にほんご", "meaning": "Japanese language"},
+        {"word": "英語", "reading": "えいご", "meaning": "English"}
+      ],
+      "mnemonics": "Words (言) that I (吾) speak - language."
+    }
+  ],
+  "culturalNote": "You've learned so much! Remember that Japanese has many levels of politeness. The ます/です forms you've learned are polite and appropriate for most situations. As you advance, you'll learn casual forms for friends and more formal language for business.",
+  "practiceGoals": [
+    "Review all particles and their uses",
+    "Practice frequency expressions",
+    "Consolidate weeks 1-3 grammar"
+  ],
+  "estimatedMinutes": 30
+}

@@ -1,0 +1,611 @@
+import OpenAI from "openai";
+import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
+import { initLogger, wrapOpenAI } from "braintrust";
+import type {
+  Intent,
+  ActiveLessonState,
+  ActionContext,
+  ConversationMessage,
+} from "./types.js";
+
+// Initialize Braintrust logger for tracing
+const logger = initLogger({
+  projectId: process.env.BRAINTRUST_PROJECT_ID,
+  projectName: process.env.BRAINTRUST_PROJECT_ID
+    ? undefined
+    : (process.env.BRAINTRUST_PROJECT_NAME || "Japanese Language Bot"),
+  apiKey: process.env.BRAINTRUST_API_KEY,
+});
+
+let openrouterClient: OpenAI | null = null;
+
+// Models to use - configurable via environment variables
+function getChatModel(): string {
+  return process.env.OPENROUTER_MODEL_CHAT || "x-ai/grok-3-fast";
+}
+
+function getIntentModel(): string {
+  return process.env.OPENROUTER_MODEL_INTENT || getChatModel();
+}
+
+function getClient(): OpenAI {
+  if (!openrouterClient) {
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) {
+      throw new Error("OPENROUTER_API_KEY is not set");
+    }
+    openrouterClient = wrapOpenAI(
+      new OpenAI({
+        baseURL: "https://openrouter.ai/api/v1",
+        apiKey,
+        timeout: 20000,
+        defaultHeaders: {
+          "HTTP-Referer": process.env.BASE_URL || "https://language-bot.vercel.app",
+          "X-Title": "Japanese Language Bot",
+        },
+      }),
+    );
+  }
+  return openrouterClient;
+}
+
+// Get user's timezone from env
+function getUserTimezone(): string {
+  return process.env.USER_TIMEZONE || "America/Mexico_City";
+}
+
+// Helper to format timestamp for display
+function formatTimestamp(timestamp: number): string {
+  const date = new Date(timestamp);
+  return date.toLocaleString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: getUserTimezone(),
+  });
+}
+
+// Helper to get current time context for system prompt
+function getCurrentTimeContext(): string {
+  const now = new Date();
+  const timezone = getUserTimezone();
+  const formatted = now.toLocaleString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+    timeZone: timezone,
+    timeZoneName: "short",
+  });
+  return `CURRENT TIME: ${formatted} (User timezone: ${timezone})\n\n`;
+}
+
+// Conversation context type for passing to generation functions
+export interface ConversationContext {
+  messages: ConversationMessage[];
+  summary?: string;
+}
+
+// Helper to build context-aware messages for LLM calls
+function buildContextMessages(
+  systemPrompt: string,
+  taskPrompt: string,
+  context?: ConversationContext,
+): ChatCompletionMessageParam[] {
+  let fullSystemPrompt = getCurrentTimeContext() + systemPrompt;
+
+  // Add conversation summary if available
+  if (context?.summary) {
+    fullSystemPrompt += `\n\n---CONVERSATION CONTEXT---
+The following is a summary of your recent conversation with this user. Use this to inform your tone and any references to previous discussions:
+
+${context.summary}
+---END CONTEXT---`;
+  }
+
+  const messages: ChatCompletionMessageParam[] = [
+    { role: "system", content: fullSystemPrompt },
+  ];
+
+  // Add recent conversation history if available
+  if (context?.messages && context.messages.length > 0) {
+    for (const msg of context.messages) {
+      const prefix = msg.role === "user" ? `[${formatTimestamp(msg.timestamp)}] ` : "";
+      messages.push({
+        role: msg.role,
+        content: prefix + msg.content,
+      });
+    }
+  }
+
+  // Add the task-specific prompt
+  messages.push({ role: "user", content: taskPrompt });
+
+  return messages;
+}
+
+// ==========================================
+// Sakura-sensei Personality
+// ==========================================
+
+const SAKURA_PERSONALITY = `You are Sakura-sensei, a warm and patient Japanese language tutor guiding a student through JLPT N5 over 30 days.
+
+Personality:
+- Patient, encouraging, and genuinely enthusiastic about Japanese language and culture
+- You celebrate small wins and never make the student feel bad about mistakes
+- You gently correct errors with clear explanations
+- You love sharing cultural context to make learning more meaningful
+- You speak naturally, like a friendly teacher, not a textbook
+
+Communication style:
+- Mix English explanations with Japanese where appropriate
+- When introducing new Japanese words, always show: Japanese (reading) - meaning
+- Use encouraging phrases but not excessively: "Nice try!", "You're getting it!", "Almost there!"
+- Keep responses focused and not overly long
+- When the student struggles, offer simpler explanations rather than just repeating
+- Celebrate streaks and progress naturally
+
+Teaching approach:
+- Start with simple concepts, build complexity gradually
+- Use relatable examples from daily life
+- Explain the "why" behind grammar patterns
+- Connect new vocabulary to what they've already learned
+- Encourage practice through conversation, not just drills
+
+Format preferences:
+- Use bullet points for vocabulary lists
+- Use bold for Japanese characters you're teaching
+- Separate romaji readings with parentheses
+- Keep cultural notes brief but interesting
+`;
+
+// ==========================================
+// Intent Parsing
+// ==========================================
+
+const INTENT_PARSING_PROMPT = `Parse user messages in a Japanese language learning context into JSON. Output ONLY valid JSON, no markdown or explanation.
+
+CONTEXT: The user is learning Japanese with daily lessons. They may be in the middle of a lesson or practicing freely.
+
+═══════════════════════════════════════════════════════════════════
+INTENT TYPES:
+═══════════════════════════════════════════════════════════════════
+
+LESSON FLOW:
+  start_lesson → {"type":"start_lesson","dayNumber":N}
+    "start lesson", "begin today's lesson", "let's learn", "start day 3"
+    dayNumber is optional - defaults to current day if not specified
+
+  answer_question → {"type":"answer_question","answer":"...","inputType":"text"|"voice"}
+    When user provides an answer during practice/assessment
+    Extract their actual answer text
+
+  request_hint → {"type":"request_hint","hintLevel":1|2|3}
+    "give me a hint", "help", "I'm stuck", "hint please"
+    hintLevel: 1=small hint, 2=bigger hint, 3=almost the answer
+
+  skip_exercise → {"type":"skip_exercise","reason":"..."}
+    "skip this", "next", "I don't know", "pass"
+
+  request_explanation → {"type":"request_explanation","topic":"..."}
+    "explain this", "what does X mean", "I don't understand", "tell me more about"
+
+  pause_lesson → {"type":"pause_lesson"}
+    "pause", "stop lesson", "take a break", "come back later"
+
+  resume_lesson → {"type":"resume_lesson"}
+    "continue", "resume", "where were we", "let's continue"
+
+PROGRESS:
+  show_progress → {"type":"show_progress"}
+    "how am I doing", "show progress", "my stats", "how many days"
+
+  show_weak_areas → {"type":"show_weak_areas"}
+    "what do I need to practice", "weak areas", "what am I struggling with"
+
+  review_vocabulary → {"type":"review_vocabulary","dayNumber":N,"topic":"..."}
+    "review vocabulary", "practice words", "quiz me on vocab"
+
+  show_lesson_history → {"type":"show_lesson_history"}
+    "lesson history", "past lessons", "what have I learned"
+
+SETTINGS:
+  set_lesson_time → {"type":"set_lesson_time","hour":N,"minute":N}
+    "set lesson time to 9am", "remind me at 3pm", "change my lesson time"
+    Parse the time into 24-hour format
+
+  change_pace → {"type":"change_pace","pace":"slower"|"normal"|"faster"}
+    "slow down", "go faster", "too fast", "I want more content"
+
+FREE PRACTICE:
+  free_conversation → {"type":"free_conversation","message":"...","inputType":"text"|"voice"}
+    When user wants to practice Japanese conversation
+    "let's talk in Japanese", "practice with me", or messages in Japanese
+
+  practice_topic → {"type":"practice_topic","topic":"..."}
+    "practice greetings", "let's practice numbers", "I want to practice X"
+
+CATCH-UP:
+  show_missed_lessons → {"type":"show_missed_lessons"}
+    "missed lessons", "what did I miss", "catch up"
+
+  start_catch_up → {"type":"start_catch_up","dayNumber":N}
+    "do day 3", "start missed lesson", "catch up on day 5"
+
+GENERAL:
+  conversation → {"type":"conversation","message":"..."}
+    General chat, greetings, questions not related to above
+
+═══════════════════════════════════════════════════════════════════
+CONTEXT-AWARE PARSING:
+═══════════════════════════════════════════════════════════════════
+
+When in an active lesson (indicated by lessonState):
+- Short answers like "hello", "konnichiwa", "です" should be answer_question, not conversation
+- Questions like "why?" or "what?" should be request_explanation
+- "I don't know" or "skip" should be skip_exercise
+- "hint" should be request_hint
+
+When NOT in an active lesson:
+- Japanese text may be free_conversation (wanting to practice)
+- "hello" or "hi" is just conversation
+- Questions about Japanese can be request_explanation with topic
+
+═══════════════════════════════════════════════════════════════════
+EXAMPLES:
+═══════════════════════════════════════════════════════════════════
+
+User is in lesson, asked "How do you say 'good morning'?":
+  "ohayo" → {"type":"answer_question","answer":"ohayo","inputType":"text"}
+  "おはよう" → {"type":"answer_question","answer":"おはよう","inputType":"text"}
+  "I don't remember" → {"type":"request_hint","hintLevel":1}
+  "skip" → {"type":"skip_exercise"}
+
+User is NOT in lesson:
+  "start lesson" → {"type":"start_lesson"}
+  "おはようございます" → {"type":"free_conversation","message":"おはようございます","inputType":"text"}
+  "how do I say thank you?" → {"type":"request_explanation","topic":"how to say thank you"}
+  "hello!" → {"type":"conversation","message":"hello!"}
+`;
+
+export async function parseIntent(
+  userMessage: string,
+  conversationHistory: ConversationMessage[] = [],
+  activeLessonState: ActiveLessonState | null = null,
+): Promise<Intent> {
+  const client = getClient();
+
+  // Build lesson context info
+  let lessonContext = "";
+  if (activeLessonState) {
+    lessonContext = `\n\n[LESSON CONTEXT: User is in Day ${activeLessonState.dayNumber}, phase: ${activeLessonState.phase}`;
+    if (activeLessonState.currentExercise) {
+      lessonContext += `, current exercise type: ${activeLessonState.currentExercise.type}`;
+    }
+    lessonContext += "]";
+  } else {
+    lessonContext = "\n\n[LESSON CONTEXT: User is NOT currently in an active lesson]";
+  }
+
+  const systemPrompt = getCurrentTimeContext() + INTENT_PARSING_PROMPT + lessonContext;
+
+  const messages: ChatCompletionMessageParam[] = [
+    { role: "system", content: systemPrompt },
+  ];
+
+  // Only include last 10 messages for context
+  const recentHistory = conversationHistory.slice(-10);
+  for (const msg of recentHistory) {
+    const prefix = msg.role === "user" ? `[${formatTimestamp(msg.timestamp)}] ` : "";
+    messages.push({
+      role: msg.role,
+      content: prefix + msg.content,
+    });
+  }
+
+  messages.push({ role: "user", content: userMessage });
+
+  const response = await client.chat.completions.create({
+    model: getIntentModel(),
+    max_tokens: 500,
+    messages,
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    throw new Error("No response from LLM");
+  }
+
+  try {
+    let jsonText = content.trim();
+    if (jsonText.startsWith("```")) {
+      jsonText = jsonText.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+    }
+
+    const intent = JSON.parse(jsonText) as Intent;
+    return intent;
+  } catch (error) {
+    console.error("Failed to parse intent:", content, error);
+    return {
+      type: "conversation",
+      message: userMessage,
+    };
+  }
+}
+
+// ==========================================
+// Action Response Generation
+// ==========================================
+
+export async function generateActionResponse(
+  actionContext: ActionContext,
+  conversationContext?: ConversationContext,
+): Promise<string> {
+  const client = getClient();
+
+  let prompt: string;
+
+  switch (actionContext.type) {
+    case "lesson_intro":
+      prompt = `Start Day ${actionContext.dayNumber} lesson: "${actionContext.title}". Topics today: ${actionContext.topics.join(", ")}. Give a warm welcome and brief overview of what we'll learn. Keep it encouraging and exciting!`;
+      break;
+
+    case "teaching_vocabulary":
+      prompt = `Teach this vocabulary item (${actionContext.index + 1}/${actionContext.total}):
+Japanese: ${actionContext.item.japanese}
+Reading: ${actionContext.item.reading}
+Meaning: ${actionContext.item.meaning}
+Part of speech: ${actionContext.item.partOfSpeech}
+${actionContext.item.exampleSentence ? `Example: ${actionContext.item.exampleSentence}` : ""}
+
+Present it clearly, give context for when to use it, and check if they understand before moving on.`;
+      break;
+
+    case "teaching_grammar":
+      prompt = `Teach this grammar pattern (${actionContext.index + 1}/${actionContext.total}):
+Pattern: ${actionContext.item.pattern}
+Meaning: ${actionContext.item.meaning}
+Formation: ${actionContext.item.formation}
+Examples: ${actionContext.item.examples.map((e) => `${e.japanese} (${e.reading}) - ${e.meaning}`).join("; ")}
+${actionContext.item.notes ? `Notes: ${actionContext.item.notes}` : ""}
+
+Explain clearly with examples. Make it relatable.`;
+      break;
+
+    case "teaching_kanji":
+      prompt = `Teach this kanji (${actionContext.index + 1}/${actionContext.total}):
+Character: ${actionContext.item.character}
+Meanings: ${actionContext.item.meanings.join(", ")}
+On'yomi: ${actionContext.item.readings.onyomi.join(", ")}
+Kun'yomi: ${actionContext.item.readings.kunyomi.join(", ")}
+Stroke count: ${actionContext.item.strokeCount}
+${actionContext.item.mnemonics ? `Memory aid: ${actionContext.item.mnemonics}` : ""}
+Examples: ${actionContext.item.examples.map((e) => `${e.word} (${e.reading}) - ${e.meaning}`).join("; ")}
+
+Present the kanji, help them remember it, show how it's used.`;
+      break;
+
+    case "exercise_prompt":
+      prompt = `Present this exercise to the student:
+Type: ${actionContext.exercise.type}
+Prompt: ${actionContext.exercise.prompt}
+This is testing: ${actionContext.exercise.itemType} - ${actionContext.exercise.itemId}
+
+Frame the question naturally, encourage them to try.`;
+      break;
+
+    case "exercise_correct":
+      prompt = `The student answered correctly! Item: ${actionContext.item}. ${actionContext.streak > 1 ? `They're on a ${actionContext.streak} streak!` : ""} Give brief, warm praise and move forward.`;
+      break;
+
+    case "exercise_incorrect":
+      prompt = `The student answered "${actionContext.userAnswer}" but the correct answer is "${actionContext.correctAnswer}".
+Explanation: ${actionContext.explanation}
+
+Gently correct them without making them feel bad. Explain why the correct answer is right.`;
+      break;
+
+    case "hint_given":
+      prompt = `Provide this hint: "${actionContext.hint}". ${actionContext.hintsRemaining} hints remaining. Present it encouragingly.`;
+      break;
+
+    case "lesson_complete":
+      prompt = `Day ${actionContext.dayNumber} is complete! Score: ${actionContext.score}%. Current streak: ${actionContext.streak} days. Celebrate their achievement appropriately based on the score. Mention what they learned.`;
+      break;
+
+    case "lesson_paused":
+      prompt = `The student paused Day ${actionContext.dayNumber} during ${actionContext.progress}. Acknowledge it warmly, let them know their progress is saved.`;
+      break;
+
+    case "lesson_resumed":
+      prompt = `The student is resuming Day ${actionContext.dayNumber}, currently in ${actionContext.phase}. Welcome them back and remind them where they were.`;
+      break;
+
+    case "progress_summary":
+      prompt = `Show progress summary:
+- Days completed: ${actionContext.daysCompleted}/30
+- Current streak: ${actionContext.currentStreak} days
+- Vocabulary mastered: ${actionContext.vocabMastered}
+- Grammar patterns mastered: ${actionContext.grammarMastered}
+- Kanji mastered: ${actionContext.kanjiMastered}
+
+Present this encouragingly. Highlight achievements.`;
+      break;
+
+    case "weak_areas":
+      const areasList = actionContext.areas.map((a) => `${a.item} (${a.type}) - ${a.errorCount} errors`).join("\n");
+      prompt = `The student asked about weak areas. Here's what they're struggling with:\n${areasList}\n\nPresent this constructively, offer to practice these areas.`;
+      break;
+
+    case "free_conversation":
+      prompt = `The student wants to practice Japanese conversation. They said: "${actionContext.userMessage}" ${actionContext.inJapanese ? "(in Japanese)" : ""}. Engage naturally, gently correct any mistakes, keep the conversation going at their level.`;
+      break;
+
+    case "missed_lessons":
+      prompt = `The student has missed ${actionContext.total} lesson(s): Days ${actionContext.days.join(", ")}. Let them know warmly, no judgment. Offer to catch up.`;
+      break;
+
+    case "lesson_time_set":
+      const period = actionContext.hour >= 12 ? "PM" : "AM";
+      const displayHour = actionContext.hour > 12 ? actionContext.hour - 12 : actionContext.hour === 0 ? 12 : actionContext.hour;
+      const timeStr = `${displayHour}:${actionContext.minute.toString().padStart(2, "0")} ${period}`;
+      prompt = `The student set their daily lesson time to ${timeStr}. Confirm warmly.`;
+      break;
+
+    case "conversation":
+      prompt = `The student said: "${actionContext.message}". Respond naturally as Sakura-sensei.`;
+      break;
+
+    default:
+      prompt = `Respond appropriately to the current context.`;
+  }
+
+  const systemPrompt = SAKURA_PERSONALITY;
+
+  const response = await client.chat.completions.create({
+    model: getChatModel(),
+    max_tokens: 1000,
+    messages: buildContextMessages(systemPrompt, prompt, conversationContext),
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    return "I'm sorry, I had trouble generating a response. Could you try again?";
+  }
+
+  return content;
+}
+
+// ==========================================
+// Conversation Summary Generation
+// ==========================================
+
+export async function generateConversationSummary(
+  messages: {
+    role: "user" | "assistant";
+    content: string;
+    timestamp: number;
+  }[],
+  existingSummary?: string,
+): Promise<string> {
+  const client = getClient();
+
+  const formattedMessages = messages
+    .map((m) => {
+      const time = new Date(m.timestamp).toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+      return `[${time}] ${m.role === "user" ? "Student" : "Sakura-sensei"}: ${m.content}`;
+    })
+    .join("\n");
+
+  const summaryContext = existingSummary
+    ? `EXISTING CONTEXT SUMMARY (from earlier conversation):\n${existingSummary}\n\n---\n\nNEWER MESSAGES TO INCORPORATE:\n${formattedMessages}`
+    : `MESSAGES TO SUMMARIZE:\n${formattedMessages}`;
+
+  const response = await client.chat.completions.create({
+    model: getChatModel(),
+    max_tokens: 500,
+    messages: [
+      {
+        role: "system",
+        content: `You are summarizing a Japanese language learning conversation between a student and Sakura-sensei. Create a concise summary that captures:
+
+1. Learning progress (what they've been studying, any breakthroughs)
+2. Areas of difficulty (words/grammar they struggled with)
+3. Student's engagement level and preferences
+4. Any specific topics or interests mentioned
+
+Keep the summary factual and concise (2-4 sentences). This will be used for continuity in future lessons.`,
+      },
+      {
+        role: "user",
+        content: summaryContext,
+      },
+    ],
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    return existingSummary || "Previous conversation context unavailable.";
+  }
+
+  return content;
+}
+
+// ==========================================
+// Daily Lesson Prompt Generation
+// ==========================================
+
+export async function generateDailyLessonPrompt(
+  dayNumber: number,
+  streak: number,
+  context?: ConversationContext,
+): Promise<string> {
+  const client = getClient();
+
+  const prompt = streak > 1
+    ? `Generate a daily lesson prompt for Day ${dayNumber}. The student has a ${streak}-day streak! Acknowledge their consistency and invite them to today's lesson.`
+    : `Generate a daily lesson prompt for Day ${dayNumber}. Warmly invite them to start today's lesson.`;
+
+  const response = await client.chat.completions.create({
+    model: getChatModel(),
+    max_tokens: 300,
+    messages: buildContextMessages(SAKURA_PERSONALITY, prompt, context),
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    return `It's time for Day ${dayNumber}! Ready to continue your Japanese journey?`;
+  }
+
+  return content;
+}
+
+// ==========================================
+// Weekly Progress Summary Generation
+// ==========================================
+
+export async function generateWeeklyProgress(
+  daysCompleted: number,
+  streak: number,
+  vocabLearned: number,
+  grammarLearned: number,
+  kanjiLearned: number,
+  context?: ConversationContext,
+): Promise<string> {
+  const client = getClient();
+
+  const prompt = `Generate a weekly progress summary:
+- Days completed this week: ${daysCompleted}
+- Current streak: ${streak} days
+- New vocabulary learned: ${vocabLearned}
+- Grammar patterns learned: ${grammarLearned}
+- Kanji learned: ${kanjiLearned}
+
+Celebrate their progress, mention specific achievements, encourage them for next week.`;
+
+  const response = await client.chat.completions.create({
+    model: getChatModel(),
+    max_tokens: 500,
+    messages: buildContextMessages(SAKURA_PERSONALITY, prompt, context),
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    return `Great work this week! You've made real progress in your Japanese studies.`;
+  }
+
+  return content;
+}

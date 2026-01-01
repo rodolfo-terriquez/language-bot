@@ -1,0 +1,134 @@
+{
+  "dayNumber": 15,
+  "title": "Week 3 Review & Past Tense",
+  "description": "Review locations and transportation, learn past tense",
+  "vocabulary": [
+    {
+      "id": "v15_01",
+      "japanese": "きます",
+      "reading": "kimasu",
+      "meaning": "to come",
+      "partOfSpeech": "verb",
+      "difficulty": 1
+    },
+    {
+      "id": "v15_02",
+      "japanese": "かえります",
+      "reading": "kaerimasu",
+      "meaning": "to return / go home",
+      "partOfSpeech": "verb",
+      "exampleSentence": "ろくじにうちにかえります。",
+      "exampleReading": "Roku-ji ni uchi ni kaerimasu.",
+      "exampleMeaning": "I return home at 6.",
+      "difficulty": 1
+    },
+    {
+      "id": "v15_03",
+      "japanese": "つきます",
+      "reading": "tsukimasu",
+      "meaning": "to arrive",
+      "partOfSpeech": "verb",
+      "difficulty": 1
+    },
+    {
+      "id": "v15_04",
+      "japanese": "でます",
+      "reading": "demasu",
+      "meaning": "to leave / go out",
+      "partOfSpeech": "verb",
+      "difficulty": 1
+    },
+    {
+      "id": "v15_05",
+      "japanese": "どのくらい",
+      "reading": "donokurai",
+      "meaning": "how long / how much",
+      "partOfSpeech": "adverb",
+      "exampleSentence": "どのくらいかかりますか。",
+      "exampleReading": "Donokurai kakarimasu ka.",
+      "exampleMeaning": "How long does it take?",
+      "difficulty": 2
+    }
+  ],
+  "grammar": [
+    {
+      "id": "g15_01",
+      "pattern": "〜ました (past tense)",
+      "meaning": "Did / Have done (polite past)",
+      "formation": "Verb stem + ました",
+      "examples": [
+        {
+          "japanese": "きのうえいがをみました。",
+          "reading": "Kinou eiga wo mimashita.",
+          "meaning": "I watched a movie yesterday."
+        },
+        {
+          "japanese": "らいしゅうとうきょうにいきました。",
+          "reading": "Raishuu Tokyo ni ikimashita.",
+          "meaning": "I went to Tokyo last week."
+        }
+      ],
+      "notes": "Change ます to ました for past tense. Works for all polite verbs.",
+      "difficulty": 1
+    },
+    {
+      "id": "g15_02",
+      "pattern": "〜ませんでした (negative past)",
+      "meaning": "Did not (polite past negative)",
+      "formation": "Verb stem + ませんでした",
+      "examples": [
+        {
+          "japanese": "あさごはんをたべませんでした。",
+          "reading": "Asagohan wo tabemasen deshita.",
+          "meaning": "I didn't eat breakfast."
+        },
+        {
+          "japanese": "きのうべんきょうしませんでした。",
+          "reading": "Kinou benkyou shimasen deshita.",
+          "meaning": "I didn't study yesterday."
+        }
+      ],
+      "notes": "For negative past, change ません to ませんでした.",
+      "difficulty": 1
+    }
+  ],
+  "kanji": [
+    {
+      "id": "k15_01",
+      "character": "人",
+      "readings": {
+        "onyomi": ["ジン", "ニン"],
+        "kunyomi": ["ひと"]
+      },
+      "meanings": ["person", "people"],
+      "strokeCount": 2,
+      "examples": [
+        {"word": "日本人", "reading": "にほんじん", "meaning": "Japanese person"},
+        {"word": "三人", "reading": "さんにん", "meaning": "three people"}
+      ],
+      "mnemonics": "A person walking - two legs in motion."
+    },
+    {
+      "id": "k15_02",
+      "character": "本",
+      "readings": {
+        "onyomi": ["ホン"],
+        "kunyomi": ["もと"]
+      },
+      "meanings": ["book", "origin", "main"],
+      "strokeCount": 5,
+      "examples": [
+        {"word": "本", "reading": "ほん", "meaning": "book"},
+        {"word": "日本", "reading": "にほん", "meaning": "Japan"}
+      ],
+      "mnemonics": "A tree (木) with a line at the base marking its root/origin."
+    }
+  ],
+  "culturalNote": "Japanese has different politeness levels for past tense too. The ました form is polite and safe for most situations. Plain past (た form) is used with friends and in casual settings.",
+  "practiceGoals": [
+    "Talk about past actions",
+    "Form negative past sentences",
+    "Discuss travel experiences"
+  ],
+  "estimatedMinutes": 25
+}

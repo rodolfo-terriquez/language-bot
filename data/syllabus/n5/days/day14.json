@@ -1,0 +1,158 @@
+{
+  "dayNumber": 14,
+  "title": "Transportation",
+  "description": "Learn transportation vocabulary and how to get around",
+  "vocabulary": [
+    {
+      "id": "v14_01",
+      "japanese": "でんしゃ",
+      "reading": "densha",
+      "meaning": "train",
+      "partOfSpeech": "noun",
+      "exampleSentence": "でんしゃでいきます。",
+      "exampleReading": "Densha de ikimasu.",
+      "exampleMeaning": "I go by train.",
+      "difficulty": 1
+    },
+    {
+      "id": "v14_02",
+      "japanese": "バス",
+      "reading": "basu",
+      "meaning": "bus",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v14_03",
+      "japanese": "くるま",
+      "reading": "kuruma",
+      "meaning": "car",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v14_04",
+      "japanese": "じてんしゃ",
+      "reading": "jitensha",
+      "meaning": "bicycle",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v14_05",
+      "japanese": "ひこうき",
+      "reading": "hikouki",
+      "meaning": "airplane",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v14_06",
+      "japanese": "あるきます",
+      "reading": "arukimasu",
+      "meaning": "to walk",
+      "partOfSpeech": "verb",
+      "exampleSentence": "がっこうまであるきます。",
+      "exampleReading": "Gakkou made arukimasu.",
+      "exampleMeaning": "I walk to school.",
+      "difficulty": 1
+    },
+    {
+      "id": "v14_07",
+      "japanese": "のります",
+      "reading": "norimasu",
+      "meaning": "to ride / get on",
+      "partOfSpeech": "verb",
+      "difficulty": 1
+    },
+    {
+      "id": "v14_08",
+      "japanese": "おります",
+      "reading": "orimasu",
+      "meaning": "to get off",
+      "partOfSpeech": "verb",
+      "difficulty": 1
+    }
+  ],
+  "grammar": [
+    {
+      "id": "g14_01",
+      "pattern": "〜で いきます",
+      "meaning": "Go by means of ~",
+      "formation": "[Transportation] で いきます/きます/かえります",
+      "examples": [
+        {
+          "japanese": "バスできます。",
+          "reading": "Basu de kimasu.",
+          "meaning": "I come by bus."
+        },
+        {
+          "japanese": "あるいていきます。",
+          "reading": "Aruite ikimasu.",
+          "meaning": "I go on foot. (walking)"
+        }
+      ],
+      "notes": "で marks the means of transportation. For walking, use あるいて (te-form of aruku) instead.",
+      "difficulty": 1
+    },
+    {
+      "id": "g14_02",
+      "pattern": "〜に のります / を おります",
+      "meaning": "Get on/off transportation",
+      "formation": "[Transport] に のります / [Transport] を おります",
+      "examples": [
+        {
+          "japanese": "でんしゃにのります。",
+          "reading": "Densha ni norimasu.",
+          "meaning": "I get on the train."
+        },
+        {
+          "japanese": "とうきょうえきでおります。",
+          "reading": "Tokyo-eki de orimasu.",
+          "meaning": "I get off at Tokyo Station."
+        }
+      ],
+      "notes": "Use に with のります (get on), を with おります (get off). で marks where you get off.",
+      "difficulty": 2
+    }
+  ],
+  "kanji": [
+    {
+      "id": "k14_01",
+      "character": "車",
+      "readings": {
+        "onyomi": ["シャ"],
+        "kunyomi": ["くるま"]
+      },
+      "meanings": ["car", "vehicle"],
+      "strokeCount": 7,
+      "examples": [
+        {"word": "電車", "reading": "でんしゃ", "meaning": "train"},
+        {"word": "車", "reading": "くるま", "meaning": "car"}
+      ],
+      "mnemonics": "A bird's-eye view of a car or cart with wheels."
+    },
+    {
+      "id": "k14_02",
+      "character": "電",
+      "readings": {
+        "onyomi": ["デン"],
+        "kunyomi": []
+      },
+      "meanings": ["electricity"],
+      "strokeCount": 13,
+      "examples": [
+        {"word": "電車", "reading": "でんしゃ", "meaning": "electric train"},
+        {"word": "電話", "reading": "でんわ", "meaning": "telephone"}
+      ],
+      "mnemonics": "Rain (雨) above with electricity extending below."
+    }
+  ],
+  "culturalNote": "Japan has one of the world's best train systems. The Shinkansen (新幹線, bullet train) is famous for its speed and punctuality. Train stations often have elaborate underground shopping areas.",
+  "practiceGoals": [
+    "Talk about how you travel",
+    "Use transportation verbs correctly",
+    "Ask about transportation options"
+  ],
+  "estimatedMinutes": 25
+}

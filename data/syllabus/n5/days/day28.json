@@ -1,0 +1,139 @@
+{
+  "dayNumber": 28,
+  "title": "Abilities & Experience",
+  "description": "Learn to talk about what you can do and what you've done",
+  "vocabulary": [
+    {
+      "id": "v28_01",
+      "japanese": "できます",
+      "reading": "dekimasu",
+      "meaning": "can do / be able to",
+      "partOfSpeech": "verb",
+      "exampleSentence": "にほんごができます。",
+      "exampleReading": "Nihongo ga dekimasu.",
+      "exampleMeaning": "I can speak Japanese.",
+      "difficulty": 1
+    },
+    {
+      "id": "v28_02",
+      "japanese": "〜ことがあります",
+      "reading": "koto ga arimasu",
+      "meaning": "have done ~ before",
+      "partOfSpeech": "expression",
+      "difficulty": 2
+    },
+    {
+      "id": "v28_03",
+      "japanese": "うんてん",
+      "reading": "unten",
+      "meaning": "driving",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v28_04",
+      "japanese": "りょうり",
+      "reading": "ryouri",
+      "meaning": "cooking / cuisine",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v28_05",
+      "japanese": "およぎます",
+      "reading": "oyogimasu",
+      "meaning": "to swim",
+      "partOfSpeech": "verb",
+      "difficulty": 1
+    },
+    {
+      "id": "v28_06",
+      "japanese": "ひきます",
+      "reading": "hikimasu",
+      "meaning": "to play (stringed instrument)",
+      "partOfSpeech": "verb",
+      "difficulty": 1
+    }
+  ],
+  "grammar": [
+    {
+      "id": "g28_01",
+      "pattern": "[Noun] が できます",
+      "meaning": "Can do ~ / Be able to ~",
+      "formation": "[Skill/Language] が できます",
+      "examples": [
+        {
+          "japanese": "ピアノができます。",
+          "reading": "Piano ga dekimasu.",
+          "meaning": "I can play piano."
+        },
+        {
+          "japanese": "かんじがすこしできます。",
+          "reading": "Kanji ga sukoshi dekimasu.",
+          "meaning": "I can read a little kanji."
+        }
+      ],
+      "notes": "Use できます for skills, languages, sports. The skill is marked with が.",
+      "difficulty": 1
+    },
+    {
+      "id": "g28_02",
+      "pattern": "Verb た-form + ことがあります",
+      "meaning": "Have (ever) done ~",
+      "formation": "[Verb た-form] + ことがあります",
+      "examples": [
+        {
+          "japanese": "ふじさんにのぼったことがあります。",
+          "reading": "Fuji-san ni nobotta koto ga arimasu.",
+          "meaning": "I have climbed Mt. Fuji before."
+        },
+        {
+          "japanese": "すしをつくったことがありますか。",
+          "reading": "Sushi wo tsukutta koto ga arimasu ka.",
+          "meaning": "Have you ever made sushi?"
+        }
+      ],
+      "notes": "This talks about life experience. Negative: ことがありません (have never done).",
+      "difficulty": 2
+    }
+  ],
+  "kanji": [
+    {
+      "id": "k28_01",
+      "character": "書",
+      "readings": {
+        "onyomi": ["ショ"],
+        "kunyomi": ["か"]
+      },
+      "meanings": ["write"],
+      "strokeCount": 10,
+      "examples": [
+        {"word": "書く", "reading": "かく", "meaning": "to write"},
+        {"word": "辞書", "reading": "じしょ", "meaning": "dictionary"}
+      ],
+      "mnemonics": "A hand holding a brush, writing on a surface."
+    },
+    {
+      "id": "k28_02",
+      "character": "読",
+      "readings": {
+        "onyomi": ["ドク", "トク"],
+        "kunyomi": ["よ"]
+      },
+      "meanings": ["read"],
+      "strokeCount": 14,
+      "examples": [
+        {"word": "読む", "reading": "よむ", "meaning": "to read"},
+        {"word": "読書", "reading": "どくしょ", "meaning": "reading (books)"}
+      ],
+      "mnemonics": "Words/speech (言) being sold (売) - books for reading."
+    }
+  ],
+  "culturalNote": "Japanese people often understate their abilities out of modesty. Even if fluent, they might say '少しできます' (I can do a little). When someone says this, they might actually be quite skilled! Conversely, boasting about skills is considered poor manners.",
+  "practiceGoals": [
+    "Talk about abilities with できます",
+    "Share experiences with ことがあります",
+    "Ask about others' experiences"
+  ],
+  "estimatedMinutes": 25
+}

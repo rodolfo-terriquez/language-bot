@@ -1,0 +1,127 @@
+{
+  "dayNumber": 12,
+  "title": "Places & Locations",
+  "description": "Learn common places and location vocabulary",
+  "vocabulary": [
+    {
+      "id": "v12_01",
+      "japanese": "えき",
+      "reading": "eki",
+      "meaning": "train station",
+      "partOfSpeech": "noun",
+      "exampleSentence": "えきはどこですか。",
+      "exampleReading": "Eki wa doko desu ka.",
+      "exampleMeaning": "Where is the station?",
+      "difficulty": 1
+    },
+    {
+      "id": "v12_02",
+      "japanese": "ぎんこう",
+      "reading": "ginkou",
+      "meaning": "bank",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v12_03",
+      "japanese": "びょういん",
+      "reading": "byouin",
+      "meaning": "hospital",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v12_04",
+      "japanese": "ゆうびんきょく",
+      "reading": "yuubinkyoku",
+      "meaning": "post office",
+      "partOfSpeech": "noun",
+      "difficulty": 2
+    },
+    {
+      "id": "v12_05",
+      "japanese": "デパート",
+      "reading": "depaato",
+      "meaning": "department store",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v12_06",
+      "japanese": "レストラン",
+      "reading": "resutoran",
+      "meaning": "restaurant",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v12_07",
+      "japanese": "こうえん",
+      "reading": "kouen",
+      "meaning": "park",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    }
+  ],
+  "grammar": [
+    {
+      "id": "g12_01",
+      "pattern": "〜に あります / います",
+      "meaning": "There is/are (at location)",
+      "formation": "[Place] に [Thing] が あります/います",
+      "examples": [
+        {
+          "japanese": "えきのまえにコンビニがあります。",
+          "reading": "Eki no mae ni konbini ga arimasu.",
+          "meaning": "There's a convenience store in front of the station."
+        },
+        {
+          "japanese": "こうえんにこどもがいます。",
+          "reading": "Kouen ni kodomo ga imasu.",
+          "meaning": "There are children in the park."
+        }
+      ],
+      "notes": "Use あります for inanimate objects, います for living things (people, animals).",
+      "difficulty": 2
+    }
+  ],
+  "kanji": [
+    {
+      "id": "k12_01",
+      "character": "水",
+      "readings": {
+        "onyomi": ["スイ"],
+        "kunyomi": ["みず"]
+      },
+      "meanings": ["water"],
+      "strokeCount": 4,
+      "examples": [
+        {"word": "水曜日", "reading": "すいようび", "meaning": "Wednesday"},
+        {"word": "水", "reading": "みず", "meaning": "water"}
+      ],
+      "mnemonics": "Water flowing - the middle line is the main stream with splashes on either side."
+    },
+    {
+      "id": "k12_02",
+      "character": "木",
+      "readings": {
+        "onyomi": ["モク", "ボク"],
+        "kunyomi": ["き"]
+      },
+      "meanings": ["tree", "wood"],
+      "strokeCount": 4,
+      "examples": [
+        {"word": "木曜日", "reading": "もくようび", "meaning": "Thursday"},
+        {"word": "木", "reading": "き", "meaning": "tree"}
+      ],
+      "mnemonics": "A tree with branches spreading at the top and roots below."
+    }
+  ],
+  "culturalNote": "Japanese cities are designed around train stations. The area around a station (駅前, ekimae) is usually the busiest commercial area with shops, restaurants, and offices.",
+  "practiceGoals": [
+    "Name common places in a city",
+    "Ask where places are located",
+    "Use あります/います correctly"
+  ],
+  "estimatedMinutes": 25
+}

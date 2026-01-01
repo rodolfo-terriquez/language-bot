@@ -1,0 +1,142 @@
+{
+  "dayNumber": 19,
+  "title": "Likes & Preferences",
+  "description": "Express what you like, dislike, and want",
+  "vocabulary": [
+    {
+      "id": "v19_01",
+      "japanese": "すき",
+      "reading": "suki",
+      "meaning": "like / fond of",
+      "partOfSpeech": "na-adjective",
+      "exampleSentence": "すしがすきです。",
+      "exampleReading": "Sushi ga suki desu.",
+      "exampleMeaning": "I like sushi.",
+      "difficulty": 1
+    },
+    {
+      "id": "v19_02",
+      "japanese": "きらい",
+      "reading": "kirai",
+      "meaning": "dislike / hate",
+      "partOfSpeech": "na-adjective",
+      "difficulty": 1
+    },
+    {
+      "id": "v19_03",
+      "japanese": "だいすき",
+      "reading": "daisuki",
+      "meaning": "love / really like",
+      "partOfSpeech": "na-adjective",
+      "difficulty": 1
+    },
+    {
+      "id": "v19_04",
+      "japanese": "ほしい",
+      "reading": "hoshii",
+      "meaning": "want (thing)",
+      "partOfSpeech": "i-adjective",
+      "exampleSentence": "あたらしいパソコンがほしいです。",
+      "exampleReading": "Atarashii pasokon ga hoshii desu.",
+      "exampleMeaning": "I want a new computer.",
+      "difficulty": 1
+    },
+    {
+      "id": "v19_05",
+      "japanese": "じょうず",
+      "reading": "jouzu",
+      "meaning": "skillful / good at",
+      "partOfSpeech": "na-adjective",
+      "difficulty": 1
+    },
+    {
+      "id": "v19_06",
+      "japanese": "へた",
+      "reading": "heta",
+      "meaning": "unskillful / bad at",
+      "partOfSpeech": "na-adjective",
+      "difficulty": 1
+    }
+  ],
+  "grammar": [
+    {
+      "id": "g19_01",
+      "pattern": "〜が すき/きらい です",
+      "meaning": "Like/dislike something",
+      "formation": "[Noun] が すき/きらい です",
+      "examples": [
+        {
+          "japanese": "にほんごがすきです。",
+          "reading": "Nihongo ga suki desu.",
+          "meaning": "I like Japanese."
+        },
+        {
+          "japanese": "なっとうがきらいです。",
+          "reading": "Nattou ga kirai desu.",
+          "meaning": "I dislike natto."
+        }
+      ],
+      "notes": "The thing you like/dislike is marked with が, not を.",
+      "difficulty": 1
+    },
+    {
+      "id": "g19_02",
+      "pattern": "〜が じょうず/へた です",
+      "meaning": "Good/bad at something",
+      "formation": "[Noun] が じょうず/へた です",
+      "examples": [
+        {
+          "japanese": "かのじょはりょうりがじょうずです。",
+          "reading": "Kanojo wa ryouri ga jouzu desu.",
+          "meaning": "She is good at cooking."
+        },
+        {
+          "japanese": "わたしはうんてんがへたです。",
+          "reading": "Watashi wa unten ga heta desu.",
+          "meaning": "I am bad at driving."
+        }
+      ],
+      "notes": "Don't use じょうず about yourself (sounds arrogant). Use とくい instead.",
+      "difficulty": 2
+    }
+  ],
+  "kanji": [
+    {
+      "id": "k19_01",
+      "character": "好",
+      "readings": {
+        "onyomi": ["コウ"],
+        "kunyomi": ["す", "この"]
+      },
+      "meanings": ["like", "fond of", "love"],
+      "strokeCount": 6,
+      "examples": [
+        {"word": "好き", "reading": "すき", "meaning": "like"},
+        {"word": "大好き", "reading": "だいすき", "meaning": "love"}
+      ],
+      "mnemonics": "A woman (女) with a child (子) - loving relationship."
+    },
+    {
+      "id": "k19_02",
+      "character": "長",
+      "readings": {
+        "onyomi": ["チョウ"],
+        "kunyomi": ["なが"]
+      },
+      "meanings": ["long", "leader"],
+      "strokeCount": 8,
+      "examples": [
+        {"word": "長い", "reading": "ながい", "meaning": "long"},
+        {"word": "社長", "reading": "しゃちょう", "meaning": "company president"}
+      ],
+      "mnemonics": "A person with long hair flowing down."
+    }
+  ],
+  "culturalNote": "In Japanese culture, directly saying 大好き (I love it/you) can be quite strong. すき is often preferred for everyday likes. Also, きらい can sound harsh - Japanese often say あまりすきじゃない (don't really like) to soften it.",
+  "practiceGoals": [
+    "Express likes and dislikes",
+    "Talk about abilities with じょうず/へた",
+    "Use が correctly with preference expressions"
+  ],
+  "estimatedMinutes": 25
+}

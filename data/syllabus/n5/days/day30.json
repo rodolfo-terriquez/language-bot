@@ -1,0 +1,151 @@
+{
+  "dayNumber": 30,
+  "title": "Comprehensive Review Part 2 & Celebration",
+  "description": "Final review of weeks 4-5 and celebration of your progress!",
+  "vocabulary": [
+    {
+      "id": "v30_01",
+      "japanese": "がんばって",
+      "reading": "ganbatte",
+      "meaning": "do your best / good luck",
+      "partOfSpeech": "expression",
+      "difficulty": 1
+    },
+    {
+      "id": "v30_02",
+      "japanese": "おめでとうございます",
+      "reading": "omedetou gozaimasu",
+      "meaning": "congratulations (polite)",
+      "partOfSpeech": "expression",
+      "difficulty": 1
+    },
+    {
+      "id": "v30_03",
+      "japanese": "つづけます",
+      "reading": "tsuzukemasu",
+      "meaning": "to continue",
+      "partOfSpeech": "verb",
+      "difficulty": 1
+    },
+    {
+      "id": "v30_04",
+      "japanese": "おぼえます",
+      "reading": "oboemasu",
+      "meaning": "to remember / memorize",
+      "partOfSpeech": "verb",
+      "difficulty": 1
+    },
+    {
+      "id": "v30_05",
+      "japanese": "わすれます",
+      "reading": "wasuremasu",
+      "meaning": "to forget",
+      "partOfSpeech": "verb",
+      "difficulty": 1
+    },
+    {
+      "id": "v30_06",
+      "japanese": "れんしゅう",
+      "reading": "renshuu",
+      "meaning": "practice",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    }
+  ],
+  "grammar": [
+    {
+      "id": "g30_01",
+      "pattern": "Review: Adjective conjugation",
+      "meaning": "い-adjectives and な-adjectives complete review",
+      "formation": "い-adj: ~い / ~くない / ~かった / ~くなかった | な-adj: ~だ / ~じゃない / ~だった / ~じゃなかった",
+      "examples": [
+        {
+          "japanese": "きのうはさむかったですが、きょうはあたたかいです。",
+          "reading": "Kinou wa samukatta desu ga, kyou wa atatakai desu.",
+          "meaning": "Yesterday was cold, but today is warm."
+        },
+        {
+          "japanese": "このへやはしずかじゃなかったですが、いまはしずかです。",
+          "reading": "Kono heya wa shizuka ja nakatta desu ga, ima wa shizuka desu.",
+          "meaning": "This room wasn't quiet, but now it's quiet."
+        }
+      ],
+      "notes": "Remember: いい → よくない, よかった, よくなかった (irregular!)",
+      "difficulty": 2
+    },
+    {
+      "id": "g30_02",
+      "pattern": "Review: Verb conjugation",
+      "meaning": "Complete verb tense review",
+      "formation": "〜ます / 〜ません / 〜ました / 〜ませんでした",
+      "examples": [
+        {
+          "japanese": "まいにちにほんごをべんきょうします。",
+          "reading": "Mainichi nihongo wo benkyou shimasu.",
+          "meaning": "I study Japanese every day."
+        },
+        {
+          "japanese": "らいねんにほんにいきたいです。",
+          "reading": "Rainen nihon ni ikitai desu.",
+          "meaning": "I want to go to Japan next year."
+        }
+      ],
+      "notes": "You've learned present/future, past, negative, and たい forms. Great foundation!",
+      "difficulty": 2
+    },
+    {
+      "id": "g30_03",
+      "pattern": "Self-introduction template",
+      "meaning": "Complete self-introduction in Japanese",
+      "formation": "はじめまして → Name → Origin → Occupation → Hobby → よろしくおねがいします",
+      "examples": [
+        {
+          "japanese": "はじめまして。わたしは[Name]です。[Country]からきました。[Occupation]です。しゅみは[Hobby]です。よろしくおねがいします。",
+          "reading": "Hajimemashite. Watashi wa [Name] desu. [Country] kara kimashita. [Occupation] desu. Shumi wa [Hobby] desu. Yoroshiku onegaishimasu.",
+          "meaning": "Nice to meet you. I am [Name]. I came from [Country]. I am a [Occupation]. My hobby is [Hobby]. Please be kind to me."
+        }
+      ],
+      "notes": "This is the standard pattern for self-introductions in Japan!",
+      "difficulty": 1
+    }
+  ],
+  "kanji": [
+    {
+      "id": "k30_01",
+      "character": "学",
+      "readings": {
+        "onyomi": ["ガク"],
+        "kunyomi": ["まな"]
+      },
+      "meanings": ["study", "learn"],
+      "strokeCount": 8,
+      "examples": [
+        {"word": "学生", "reading": "がくせい", "meaning": "student"},
+        {"word": "学ぶ", "reading": "まなぶ", "meaning": "to learn"}
+      ],
+      "mnemonics": "A child (子) under a roof with learning tools - studying."
+    },
+    {
+      "id": "k30_02",
+      "character": "生",
+      "readings": {
+        "onyomi": ["セイ", "ショウ"],
+        "kunyomi": ["い", "う", "は", "なま"]
+      },
+      "meanings": ["life", "birth", "student"],
+      "strokeCount": 5,
+      "examples": [
+        {"word": "学生", "reading": "がくせい", "meaning": "student"},
+        {"word": "先生", "reading": "せんせい", "meaning": "teacher"}
+      ],
+      "mnemonics": "A plant growing from the ground - life emerging."
+    }
+  ],
+  "culturalNote": "おめでとうございます! You've completed 30 days of Japanese study! In Japan, perseverance (がんばる) is highly valued. You've shown great commitment. Remember: language learning is a marathon, not a sprint. Keep practicing daily, even just 10-15 minutes, and you'll continue to improve. 日本語の勉強をつづけてください! (Please continue studying Japanese!)",
+  "practiceGoals": [
+    "Review all adjective and verb conjugations",
+    "Practice complete self-introductions",
+    "Celebrate your 30-day achievement!"
+  ],
+  "estimatedMinutes": 30
+}

@@ -1,0 +1,138 @@
+{
+  "dayNumber": 13,
+  "title": "Position Words",
+  "description": "Learn words for describing positions and directions",
+  "vocabulary": [
+    {
+      "id": "v13_01",
+      "japanese": "うえ",
+      "reading": "ue",
+      "meaning": "above / on top",
+      "partOfSpeech": "noun",
+      "exampleSentence": "つくえのうえにほんがあります。",
+      "exampleReading": "Tsukue no ue ni hon ga arimasu.",
+      "exampleMeaning": "There's a book on the desk.",
+      "difficulty": 1
+    },
+    {
+      "id": "v13_02",
+      "japanese": "した",
+      "reading": "shita",
+      "meaning": "below / under",
+      "partOfSpeech": "noun",
+      "exampleSentence": "いすのしたにねこがいます。",
+      "exampleReading": "Isu no shita ni neko ga imasu.",
+      "exampleMeaning": "There's a cat under the chair.",
+      "difficulty": 1
+    },
+    {
+      "id": "v13_03",
+      "japanese": "まえ",
+      "reading": "mae",
+      "meaning": "front / before",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v13_04",
+      "japanese": "うしろ",
+      "reading": "ushiro",
+      "meaning": "behind / back",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v13_05",
+      "japanese": "みぎ",
+      "reading": "migi",
+      "meaning": "right",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v13_06",
+      "japanese": "ひだり",
+      "reading": "hidari",
+      "meaning": "left",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v13_07",
+      "japanese": "なか",
+      "reading": "naka",
+      "meaning": "inside",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v13_08",
+      "japanese": "そと",
+      "reading": "soto",
+      "meaning": "outside",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    }
+  ],
+  "grammar": [
+    {
+      "id": "g13_01",
+      "pattern": "〜の [Position]",
+      "meaning": "Position relative to something",
+      "formation": "[Reference point] の [Position word]",
+      "examples": [
+        {
+          "japanese": "ぎんこうのとなりにカフェがあります。",
+          "reading": "Ginkou no tonari ni kafe ga arimasu.",
+          "meaning": "There's a cafe next to the bank."
+        },
+        {
+          "japanese": "びょういんのまえにくすりやがあります。",
+          "reading": "Byouin no mae ni kusuriya ga arimasu.",
+          "meaning": "There's a pharmacy in front of the hospital."
+        }
+      ],
+      "notes": "Position words come after の and before に when describing location.",
+      "difficulty": 1
+    }
+  ],
+  "kanji": [
+    {
+      "id": "k13_01",
+      "character": "金",
+      "readings": {
+        "onyomi": ["キン", "コン"],
+        "kunyomi": ["かね", "かな"]
+      },
+      "meanings": ["gold", "money", "metal"],
+      "strokeCount": 8,
+      "examples": [
+        {"word": "金曜日", "reading": "きんようび", "meaning": "Friday"},
+        {"word": "お金", "reading": "おかね", "meaning": "money"}
+      ],
+      "mnemonics": "A person standing on the ground with nuggets of gold below."
+    },
+    {
+      "id": "k13_02",
+      "character": "土",
+      "readings": {
+        "onyomi": ["ド", "ト"],
+        "kunyomi": ["つち"]
+      },
+      "meanings": ["earth", "soil", "ground"],
+      "strokeCount": 3,
+      "examples": [
+        {"word": "土曜日", "reading": "どようび", "meaning": "Saturday"},
+        {"word": "土地", "reading": "とち", "meaning": "land"}
+      ],
+      "mnemonics": "A cross showing the horizon line with earth below."
+    }
+  ],
+  "culturalNote": "In Japan, addresses work differently - they start with the largest area (prefecture) and get more specific, ending with the building name and room number. Street names are rarely used!",
+  "practiceGoals": [
+    "Describe where things are located",
+    "Give and understand directions",
+    "Use position words naturally"
+  ],
+  "estimatedMinutes": 25
+}

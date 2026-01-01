@@ -1,0 +1,147 @@
+{
+  "dayNumber": 22,
+  "title": "Counting Things",
+  "description": "Learn Japanese counters for different types of objects",
+  "vocabulary": [
+    {
+      "id": "v22_01",
+      "japanese": "ひとつ",
+      "reading": "hitotsu",
+      "meaning": "one (general counter)",
+      "partOfSpeech": "counter",
+      "difficulty": 1
+    },
+    {
+      "id": "v22_02",
+      "japanese": "ふたつ",
+      "reading": "futatsu",
+      "meaning": "two (general counter)",
+      "partOfSpeech": "counter",
+      "difficulty": 1
+    },
+    {
+      "id": "v22_03",
+      "japanese": "みっつ",
+      "reading": "mittsu",
+      "meaning": "three (general counter)",
+      "partOfSpeech": "counter",
+      "difficulty": 1
+    },
+    {
+      "id": "v22_04",
+      "japanese": "よっつ",
+      "reading": "yottsu",
+      "meaning": "four (general counter)",
+      "partOfSpeech": "counter",
+      "difficulty": 1
+    },
+    {
+      "id": "v22_05",
+      "japanese": "いつつ",
+      "reading": "itsutsu",
+      "meaning": "five (general counter)",
+      "partOfSpeech": "counter",
+      "difficulty": 1
+    },
+    {
+      "id": "v22_06",
+      "japanese": "〜まい",
+      "reading": "mai",
+      "meaning": "counter for flat things",
+      "partOfSpeech": "counter",
+      "exampleSentence": "かみをさんまいください。",
+      "exampleReading": "Kami wo san-mai kudasai.",
+      "exampleMeaning": "Three sheets of paper, please.",
+      "difficulty": 2
+    },
+    {
+      "id": "v22_07",
+      "japanese": "〜ほん/ぼん/ぽん",
+      "reading": "hon/bon/pon",
+      "meaning": "counter for long/cylindrical things",
+      "partOfSpeech": "counter",
+      "difficulty": 2
+    }
+  ],
+  "grammar": [
+    {
+      "id": "g22_01",
+      "pattern": "〜つ (Native Japanese numbers)",
+      "meaning": "General counter 1-10",
+      "formation": "ひとつ、ふたつ、みっつ...",
+      "examples": [
+        {
+          "japanese": "りんごをふたつかいました。",
+          "reading": "Ringo wo futatsu kaimashita.",
+          "meaning": "I bought two apples."
+        },
+        {
+          "japanese": "たまごがみっつあります。",
+          "reading": "Tamago ga mittsu arimasu.",
+          "meaning": "There are three eggs."
+        }
+      ],
+      "notes": "ひとつ〜とお (1-10). After 10, use regular numbers. This counter works for most things!",
+      "difficulty": 1
+    },
+    {
+      "id": "g22_02",
+      "pattern": "いくつ",
+      "meaning": "How many (things)?",
+      "formation": "[Noun] は いくつ ですか",
+      "examples": [
+        {
+          "japanese": "りんごはいくつありますか。",
+          "reading": "Ringo wa ikutsu arimasu ka.",
+          "meaning": "How many apples are there?"
+        },
+        {
+          "japanese": "いくつほしいですか。",
+          "reading": "Ikutsu hoshii desu ka.",
+          "meaning": "How many do you want?"
+        }
+      ],
+      "notes": "いくつ is the question word for 'how many' when using つ counter.",
+      "difficulty": 1
+    }
+  ],
+  "kanji": [
+    {
+      "id": "k22_01",
+      "character": "千",
+      "readings": {
+        "onyomi": ["セン"],
+        "kunyomi": []
+      },
+      "meanings": ["thousand"],
+      "strokeCount": 3,
+      "examples": [
+        {"word": "千", "reading": "せん", "meaning": "1000"},
+        {"word": "三千", "reading": "さんぜん", "meaning": "3000"}
+      ],
+      "mnemonics": "A person (人) with a line on top - standing tall like 1000."
+    },
+    {
+      "id": "k22_02",
+      "character": "万",
+      "readings": {
+        "onyomi": ["マン", "バン"],
+        "kunyomi": []
+      },
+      "meanings": ["ten thousand"],
+      "strokeCount": 3,
+      "examples": [
+        {"word": "一万", "reading": "いちまん", "meaning": "10,000"},
+        {"word": "十万", "reading": "じゅうまん", "meaning": "100,000"}
+      ],
+      "mnemonics": "A swastika-like symbol representing infinity (many, many)."
+    }
+  ],
+  "culturalNote": "Japanese has many counters! The つ counter (hitotsu, futatsu...) is safest as a beginner. You'll also hear にん for people, ひき for animals, さつ for books. Don't worry about memorizing all counters - native speakers understand even if you use the wrong one!",
+  "practiceGoals": [
+    "Count objects using つ counter (1-10)",
+    "Ask 'how many' with いくつ",
+    "Use specific counters (まい, ほん)"
+  ],
+  "estimatedMinutes": 25
+}

@@ -1,0 +1,44 @@
+{
+  "level": "N5",
+  "totalDays": 30,
+  "description": "JLPT N5 Foundation Course - Learn basic Japanese grammar, vocabulary, and kanji over 30 days",
+  "weeklyThemes": [
+    {
+      "week": 1,
+      "days": [1, 2, 3, 4, 5],
+      "theme": "Foundations",
+      "description": "Greetings, self-introduction, numbers, basic particles"
+    },
+    {
+      "week": 2,
+      "days": [6, 7, 8, 9, 10],
+      "theme": "Daily Life",
+      "description": "Time, dates, daily routines, family"
+    },
+    {
+      "week": 3,
+      "days": [11, 12, 13, 14, 15],
+      "theme": "Actions & Places",
+      "description": "Verbs, locations, transportation"
+    },
+    {
+      "week": 4,
+      "days": [16, 17, 18, 19, 20],
+      "theme": "Descriptions",
+      "description": "Adjectives, comparisons, preferences"
+    },
+    {
+      "week": 5,
+      "days": [21, 22, 23, 24, 25],
+      "theme": "Social Interactions",
+      "description": "Shopping, dining, making requests"
+    },
+    {
+      "week": 6,
+      "days": [26, 27, 28, 29, 30],
+      "theme": "Integration & Review",
+      "description": "Complex sentences, comprehensive review, practice"
+    }
+  ],
+  "days": []
+}

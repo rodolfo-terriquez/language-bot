@@ -1,0 +1,134 @@
+{
+  "dayNumber": 10,
+  "title": "Week 2 Review & Dates",
+  "description": "Review week 2 and learn to express dates",
+  "vocabulary": [
+    {
+      "id": "v10_01",
+      "japanese": "がつ",
+      "reading": "gatsu",
+      "meaning": "month (counter)",
+      "partOfSpeech": "counter",
+      "exampleSentence": "いまはさんがつです。",
+      "exampleReading": "Ima wa san-gatsu desu.",
+      "exampleMeaning": "It's March now.",
+      "difficulty": 1
+    },
+    {
+      "id": "v10_02",
+      "japanese": "にち",
+      "reading": "nichi",
+      "meaning": "day (counter)",
+      "partOfSpeech": "counter",
+      "difficulty": 1
+    },
+    {
+      "id": "v10_03",
+      "japanese": "あした",
+      "reading": "ashita",
+      "meaning": "tomorrow",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v10_04",
+      "japanese": "きのう",
+      "reading": "kinou",
+      "meaning": "yesterday",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v10_05",
+      "japanese": "らいしゅう",
+      "reading": "raishuu",
+      "meaning": "next week",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    },
+    {
+      "id": "v10_06",
+      "japanese": "せんしゅう",
+      "reading": "senshuu",
+      "meaning": "last week",
+      "partOfSpeech": "noun",
+      "difficulty": 1
+    }
+  ],
+  "grammar": [
+    {
+      "id": "g10_01",
+      "pattern": "〜がつ〜にち",
+      "meaning": "Month and day (dates)",
+      "formation": "[Month]がつ [Day]にち",
+      "examples": [
+        {
+          "japanese": "たんじょうびはいつですか。",
+          "reading": "Tanjoubi wa itsu desu ka.",
+          "meaning": "When is your birthday?"
+        },
+        {
+          "japanese": "さんがつじゅうよっかです。",
+          "reading": "San-gatsu juuyokka desu.",
+          "meaning": "It's March 14th."
+        }
+      ],
+      "notes": "Days 1-10 have special readings: ついたち(1), ふつか(2), みっか(3), よっか(4), いつか(5), むいか(6), なのか(7), ようか(8), ここのか(9), とおか(10).",
+      "difficulty": 2
+    }
+  ],
+  "kanji": [
+    {
+      "id": "k10_01",
+      "character": "八",
+      "readings": {
+        "onyomi": ["ハチ"],
+        "kunyomi": ["や", "やっ"]
+      },
+      "meanings": ["eight"],
+      "strokeCount": 2,
+      "examples": [
+        {"word": "八つ", "reading": "やっつ", "meaning": "eight (things)"},
+        {"word": "八月", "reading": "はちがつ", "meaning": "August"}
+      ],
+      "mnemonics": "Two lines spreading apart - like cutting something in eight pieces."
+    },
+    {
+      "id": "k10_02",
+      "character": "九",
+      "readings": {
+        "onyomi": ["キュウ", "ク"],
+        "kunyomi": ["ここの"]
+      },
+      "meanings": ["nine"],
+      "strokeCount": 2,
+      "examples": [
+        {"word": "九つ", "reading": "ここのつ", "meaning": "nine (things)"},
+        {"word": "九月", "reading": "くがつ", "meaning": "September"}
+      ],
+      "mnemonics": "Looks like a hook - almost reaching 10!"
+    },
+    {
+      "id": "k10_03",
+      "character": "十",
+      "readings": {
+        "onyomi": ["ジュウ", "ジッ"],
+        "kunyomi": ["とお"]
+      },
+      "meanings": ["ten"],
+      "strokeCount": 2,
+      "examples": [
+        {"word": "十", "reading": "じゅう", "meaning": "ten"},
+        {"word": "二十", "reading": "にじゅう", "meaning": "twenty"}
+      ],
+      "mnemonics": "A cross - like the Roman numeral X for ten."
+    }
+  ],
+  "culturalNote": "Japanese traditionally used a different calendar system until 1873. The emperor's reign is still used for official documents (e.g., 令和5年 = Reiwa year 5 = 2023). New Year (お正月) is the most important holiday.",
+  "practiceGoals": [
+    "Express dates in Japanese",
+    "Talk about past and future events",
+    "Review time and family vocabulary"
+  ],
+  "estimatedMinutes": 25
+}

@@ -120,13 +120,28 @@ export default async function handler(
       redis.getActiveLessonState(chatId),
     ]);
 
-    // Parse intent
-    const intent = await parseIntent(userText, conversationData.messages, activeLessonState);
-
     const context: ConversationContext = {
       messages: conversationData.messages,
       summary: conversationData.summary,
     };
+
+    // During teaching phases, treat any response as acknowledgment to continue
+    // Don't bother with intent parsing - just advance the lesson
+    if (activeLessonState && isTeachingPhase(activeLessonState.phase)) {
+      console.log(`[${chatId}] In teaching phase (${activeLessonState.phase}), advancing lesson`);
+      const response = await handleTeachingResponse(chatId, userText, context);
+      if (response) {
+        await redis.addToConversation(chatId, userText, response, {
+          dayNumber: activeLessonState.dayNumber,
+          phase: activeLessonState.phase,
+        });
+      }
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    // Parse intent for non-teaching interactions
+    const intent = await parseIntent(userText, conversationData.messages, activeLessonState);
 
     console.log(`[${chatId}] Intent: ${intent.type}`);
     const response = await handleIntent(chatId, intent, context);
@@ -200,6 +215,104 @@ async function handleIntent(
       return response;
     default:
       return null;
+  }
+}
+
+// ==========================================
+// Teaching Phase Helpers
+// ==========================================
+
+function isTeachingPhase(phase: string): boolean {
+  return ["vocabulary_teaching", "grammar_teaching", "kanji_teaching"].includes(phase);
+}
+
+async function handleTeachingResponse(
+  chatId: number,
+  userText: string,
+  context: ConversationContext,
+): Promise<string> {
+  const state = await redis.getActiveLessonState(chatId);
+  if (!state) return "No active lesson.";
+
+  const dayContent = await syllabus.getSyllabusDay(state.dayNumber);
+  if (!dayContent) return "Could not load lesson content.";
+
+  // Get the current teaching item to compare against
+  const result = await lessonEngine.getCurrentTeachingItem(chatId);
+  let expectedAnswers: string[] = [];
+  let itemDisplay = "";
+
+  if (result.data?.vocabularyItem) {
+    const item = result.data.vocabularyItem;
+    expectedAnswers = [
+      item.japanese,
+      item.reading,
+      item.reading.toLowerCase(),
+      // Common romaji variations
+      item.reading.replace(/ou/g, "o").replace(/oo/g, "o").toLowerCase(),
+    ];
+    itemDisplay = `${item.japanese} (${item.reading})`;
+  } else if (result.data?.grammarPattern) {
+    const item = result.data.grammarPattern;
+    // For grammar, accept acknowledgments like "ok", "got it", "yes", etc.
+    expectedAnswers = ["ok", "okay", "got it", "yes", "hai", "はい", "understood", "i understand"];
+    itemDisplay = item.pattern;
+  } else if (result.data?.kanjiItem) {
+    const item = result.data.kanjiItem;
+    expectedAnswers = [
+      item.character,
+      ...item.meanings.map(m => m.toLowerCase()),
+      ...item.readings.onyomi,
+      ...item.readings.kunyomi,
+    ];
+    itemDisplay = item.character;
+  }
+
+  // Normalize user input for comparison
+  const normalizedInput = userText.toLowerCase().trim()
+    .replace(/ou/g, "o").replace(/oo/g, "o")
+    .replace(/[.,!?。、！？]/g, "");
+
+  // Check if response is correct or an acknowledgment
+  const isCorrect = expectedAnswers.some(expected =>
+    normalizedInput.includes(expected.toLowerCase()) ||
+    expected.toLowerCase().includes(normalizedInput)
+  );
+  const isAcknowledgment = ["ok", "okay", "got it", "yes", "hai", "はい", "next", "continue", "understood"].some(
+    ack => normalizedInput.includes(ack)
+  );
+
+  if (isCorrect || isAcknowledgment) {
+    // Correct! Give brief praise and advance
+    const praise = await generateActionResponse(
+      {
+        type: "conversation",
+        message: `User said "${userText}" which is correct for ${itemDisplay}. Give very brief praise (1 sentence, like "Perfect! *tail wags*") then move on.`,
+      },
+      context,
+    );
+    await telegram.sendMessage(chatId, praise);
+
+    // Advance to next item
+    await lessonEngine.advanceToNextItem(chatId);
+
+    setTimeout(async () => {
+      await continueLesson(chatId, context);
+    }, 1500);
+
+    return praise;
+  } else {
+    // Incorrect - explain and ask to try again
+    const correction = await generateActionResponse(
+      {
+        type: "conversation",
+        message: `User tried "${userText}" but we're learning ${itemDisplay}. Gently correct them (the expected answer was one of: ${expectedAnswers.slice(0, 3).join(", ")}). Ask them to try again. Keep it brief and encouraging.`,
+      },
+      context,
+    );
+    await telegram.sendMessage(chatId, correction);
+    // Don't advance - wait for them to try again
+    return correction;
   }
 }
 
@@ -568,20 +681,7 @@ async function showNextTeachingItem(
       context,
     );
     await telegram.sendMessage(chatId, response);
-
-    // Advance to next item after a delay
-    setTimeout(async () => {
-      await lessonEngine.advanceToNextItem(chatId);
-      const nextResult = await lessonEngine.getCurrentTeachingItem(chatId);
-
-      // If we're still teaching, show next item. Otherwise continue lesson.
-      if (nextResult.phase === result.phase && nextResult.data?.vocabularyItem) {
-        await showNextTeachingItem(chatId, context);
-      } else {
-        await continueLesson(chatId, context);
-      }
-    }, 5000);
-
+    // Wait for user response - handleTeachingResponse will advance
     return response;
   }
 
@@ -597,18 +697,7 @@ async function showNextTeachingItem(
       context,
     );
     await telegram.sendMessage(chatId, response);
-
-    setTimeout(async () => {
-      await lessonEngine.advanceToNextItem(chatId);
-      const nextResult = await lessonEngine.getCurrentTeachingItem(chatId);
-
-      if (nextResult.phase === result.phase && nextResult.data?.grammarPattern) {
-        await showNextTeachingItem(chatId, context);
-      } else {
-        await continueLesson(chatId, context);
-      }
-    }, 6000);
-
+    // Wait for user response - handleTeachingResponse will advance
     return response;
   }
 
@@ -624,18 +713,7 @@ async function showNextTeachingItem(
       context,
     );
     await telegram.sendMessage(chatId, response);
-
-    setTimeout(async () => {
-      await lessonEngine.advanceToNextItem(chatId);
-      const nextResult = await lessonEngine.getCurrentTeachingItem(chatId);
-
-      if (nextResult.phase === result.phase && nextResult.data?.kanjiItem) {
-        await showNextTeachingItem(chatId, context);
-      } else {
-        await continueLesson(chatId, context);
-      }
-    }, 6000);
-
+    // Wait for user response - handleTeachingResponse will advance
     return response;
   }
 

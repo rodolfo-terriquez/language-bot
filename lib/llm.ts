@@ -506,21 +506,31 @@ export async function evaluateTeachingAnswer(
 ): Promise<boolean> {
   const client = getClient();
 
-  const systemPrompt = `You are a Japanese language answer evaluator. Your ONLY job is to determine if the student's answer matches the expected item.
+  const systemPrompt = `You are a Japanese language answer evaluator for a teaching context.
 
-Rules for matching:
-1. Kanji and hiragana are equivalent (よろしくお願いします = よろしくおねがいします)
-2. Romaji is acceptable (konnichiwa = こんにちは, ohayou = おはよう)
-3. Minor punctuation differences are OK (。vs nothing)
-4. Polite vs casual forms of the same word are both acceptable
-5. Slight spelling variations in romaji are OK (ohayou vs ohayo)
+Your job: Determine if the student demonstrated understanding of the vocabulary/grammar item.
 
-Respond with ONLY the word "CORRECT" or "INCORRECT" - nothing else.`;
+IMPORTANT - Be GENEROUS in evaluation:
+1. Kanji and hiragana are ALWAYS equivalent:
+   - 私 = わたし
+   - お願い = おねがい
+   - よろしくお願いします = よろしくおねがいします
+2. If expected is a WORD and student used it correctly IN A SENTENCE, that's CORRECT
+   - Expected: わたし (watashi) - I/me
+   - Student: 私はロドです → CORRECT (they used わたし/私 correctly!)
+3. Romaji is acceptable (konnichiwa = こんにちは)
+4. Punctuation differences don't matter (。vs nothing)
+5. Polite/casual variations are OK
+6. Small typos in romaji are OK
 
-  const userPrompt = `Expected item: ${expectedItem}
-Student said: "${studentAnswer}"
+The goal is teaching, not strict testing. If the student shows they understand the item, mark CORRECT.
 
-Is this correct?`;
+Respond with ONLY "CORRECT" or "INCORRECT" - nothing else.`;
+
+  const userPrompt = `Teaching item: ${expectedItem}
+Student response: "${studentAnswer}"
+
+Did the student demonstrate understanding of this item?`;
 
   try {
     const response = await client.chat.completions.create({

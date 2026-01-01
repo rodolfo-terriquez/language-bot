@@ -20,6 +20,7 @@ import {
   parseIntent,
   generateActionResponse,
   generateConversationSummary,
+  evaluateTeachingAnswer,
   ConversationContext,
 } from "../lib/llm.js";
 import * as redis from "../lib/redis.js";
@@ -272,24 +273,8 @@ async function handleTeachingResponse(
     return "Good! Next:";
   }
 
-  // Use LLM to evaluate if the response is correct (handles kanji/hiragana equivalence)
-  const evaluationPrompt = `The student is learning: ${itemInfo}
-
-The student said: "${userText}"
-
-Is this a correct attempt at saying/writing this item? Consider:
-- Kanji and hiragana are equivalent (よろしくお願いします = よろしくおねがいします)
-- Romaji is acceptable (konnichiwa = こんにちは)
-- Minor variations are OK
-
-Reply with ONLY "CORRECT" or "INCORRECT" - nothing else.`;
-
-  const evaluation = await generateActionResponse(
-    { type: "conversation", message: evaluationPrompt },
-    context,
-  );
-
-  const isCorrect = evaluation.toUpperCase().includes("CORRECT") && !evaluation.toUpperCase().includes("INCORRECT");
+  // Use dedicated evaluation function (no Emi personality, just classification)
+  const isCorrect = await evaluateTeachingAnswer(userText, itemDisplay);
 
   if (isCorrect) {
     await telegram.sendMessage(chatId, "Good! Next:");

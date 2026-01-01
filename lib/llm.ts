@@ -492,6 +492,63 @@ Present this encouragingly. Highlight achievements.`;
 }
 
 // ==========================================
+// Simple Answer Evaluation (No Personality)
+// ==========================================
+
+/**
+ * Evaluates if a student's answer is correct during teaching phases.
+ * This is a simple classification call that does NOT use Emi's personality.
+ * Returns true if the answer is correct, false otherwise.
+ */
+export async function evaluateTeachingAnswer(
+  studentAnswer: string,
+  expectedItem: string,
+): Promise<boolean> {
+  const client = getClient();
+
+  const systemPrompt = `You are a Japanese language answer evaluator. Your ONLY job is to determine if the student's answer matches the expected item.
+
+Rules for matching:
+1. Kanji and hiragana are equivalent (よろしくお願いします = よろしくおねがいします)
+2. Romaji is acceptable (konnichiwa = こんにちは, ohayou = おはよう)
+3. Minor punctuation differences are OK (。vs nothing)
+4. Polite vs casual forms of the same word are both acceptable
+5. Slight spelling variations in romaji are OK (ohayou vs ohayo)
+
+Respond with ONLY the word "CORRECT" or "INCORRECT" - nothing else.`;
+
+  const userPrompt = `Expected item: ${expectedItem}
+Student said: "${studentAnswer}"
+
+Is this correct?`;
+
+  try {
+    const response = await client.chat.completions.create({
+      model: getIntentModel(), // Use faster model for simple classification
+      max_tokens: 20,
+      temperature: 0, // Deterministic output
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+    });
+
+    const content = response.choices[0]?.message?.content?.trim().toUpperCase() || "";
+
+    // Check for CORRECT but not INCORRECT
+    const isCorrect = content.includes("CORRECT") && !content.includes("INCORRECT");
+
+    console.log(`[evaluateTeachingAnswer] Expected: "${expectedItem}", Got: "${studentAnswer}", LLM said: "${content}", Result: ${isCorrect}`);
+
+    return isCorrect;
+  } catch (error) {
+    console.error("[evaluateTeachingAnswer] Error:", error);
+    // On error, fall back to false (ask them to try again)
+    return false;
+  }
+}
+
+// ==========================================
 // Conversation Summary Generation
 // ==========================================
 

@@ -264,7 +264,7 @@ async function handleTeachingResponse(
   );
 
   if (isAcknowledgment) {
-    // Just acknowledging, move on
+    // Just acknowledging, move on to next item
     await lessonEngine.advanceToNextItem(chatId);
     await continueLesson(chatId, context);
     return "Acknowledged";
@@ -274,10 +274,11 @@ async function handleTeachingResponse(
   const isCorrect = await evaluateTeachingAnswer(userText, itemDisplay);
 
   if (isCorrect) {
-    await telegram.sendMessage(chatId, "Good!");
+    // Don't send separate "Good!" - just advance to next item
+    // The next teaching prompt will naturally acknowledge their progress
     await lessonEngine.advanceToNextItem(chatId);
     await continueLesson(chatId, context);
-    return "Good!";
+    return "Correct - advanced to next item";
   } else {
     // Incorrect - give brief correction
     const correction = await generateActionResponse(

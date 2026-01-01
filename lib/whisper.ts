@@ -23,7 +23,8 @@ export async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
   const transcription = await client.audio.transcriptions.create({
     file,
     model: "whisper-1",
-    language: "en",
+    // No language specified - Whisper will auto-detect and output in the spoken language
+    // Japanese speech → Japanese characters, English speech → English text
   });
 
   return transcription.text;

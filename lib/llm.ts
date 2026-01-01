@@ -9,12 +9,14 @@ import type {
 } from "./types.js";
 
 // Initialize Braintrust logger for tracing
+const braintrustApiKey = process.env.BRAINTRUST_API_KEY;
+const braintrustProjectId = process.env.BRAINTRUST_PROJECT_ID;
+
+console.log(`[Braintrust] Initializing with project ID: ${braintrustProjectId}, API key set: ${!!braintrustApiKey}`);
+
 const logger = initLogger({
-  projectId: process.env.BRAINTRUST_PROJECT_ID,
-  projectName: process.env.BRAINTRUST_PROJECT_ID
-    ? undefined
-    : (process.env.BRAINTRUST_PROJECT_NAME || "Japanese Language Bot"),
-  apiKey: process.env.BRAINTRUST_API_KEY,
+  projectId: braintrustProjectId,
+  apiKey: braintrustApiKey,
 });
 
 let openrouterClient: OpenAI | null = null;

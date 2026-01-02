@@ -148,8 +148,16 @@ export default async function handler(
       summary: conversationData.summary,
     };
 
-    // NEW: Checklist-based lesson flow (takes priority)
-    if (activeChecklist) {
+    // Parse intent for ALL messages (even during lessons)
+    // This allows users to exit lessons by saying "pause", "let's chat", etc.
+    const intent = await parseIntent(userText, conversationData.messages, activeLessonState);
+    console.log(`[${chatId}] Intent: ${intent.type}`);
+
+    // Check if user wants to exit lesson flow (pause, chat, check progress, etc.)
+    const wantsToExitLesson = shouldExitLessonFlow(intent);
+
+    // Checklist-based lesson flow (unless user wants to exit)
+    if (activeChecklist && !wantsToExitLesson) {
       console.log(`[${chatId}] Active checklist for Day ${activeChecklist.dayNumber}, item ${activeChecklist.currentIndex + 1}/${activeChecklist.totalCount}`);
       const response = await handleChecklistLesson(chatId, userText, activeChecklist, context);
       if (response) {
@@ -164,7 +172,7 @@ export default async function handler(
 
     // LEGACY: During teaching phases, treat any response as acknowledgment to continue
     // This path is kept for backwards compatibility but new lessons use checklists
-    if (activeLessonState && isTeachingPhase(activeLessonState.phase)) {
+    if (activeLessonState && isTeachingPhase(activeLessonState.phase) && !wantsToExitLesson) {
       console.log(`[${chatId}] In teaching phase (${activeLessonState.phase}), advancing lesson`);
       const response = await handleTeachingResponse(chatId, userText, context);
       if (response) {
@@ -177,10 +185,11 @@ export default async function handler(
       return;
     }
 
-    // Parse intent for non-teaching interactions
-    const intent = await parseIntent(userText, conversationData.messages, activeLessonState);
+    // Log if user is exiting lesson flow
+    if (wantsToExitLesson && (activeChecklist || activeLessonState)) {
+      console.log(`[${chatId}] User exiting lesson flow with intent: ${intent.type}`);
+    }
 
-    console.log(`[${chatId}] Intent: ${intent.type}`);
     const response = await handleIntent(chatId, intent, context);
 
     if (response) {
@@ -263,6 +272,44 @@ async function handleIntent(
 
 function isTeachingPhase(phase: string): boolean {
   return ["vocabulary_teaching", "grammar_teaching", "kanji_teaching"].includes(phase);
+}
+
+/**
+ * Check if an intent should exit the lesson flow and switch to conversation mode.
+ * This allows users to pause lessons, chat freely, or do other non-lesson activities.
+ */
+function shouldExitLessonFlow(intent: Intent): boolean {
+  const exitIntents = [
+    "pause_lesson",
+    "free_conversation",
+    "show_progress",
+    "show_weak_areas",
+    "show_lesson_history",
+    "set_lesson_time",
+    "show_missed_lessons",
+  ];
+
+  // Direct exit intents
+  if (exitIntents.includes(intent.type)) {
+    return true;
+  }
+
+  // Conversation intent - check if it's clearly not a lesson answer
+  if (intent.type === "conversation") {
+    const msg = intent.message.toLowerCase();
+    // Common phrases that indicate wanting to chat, not answer
+    const chatPhrases = [
+      "let's chat", "let's talk", "just chat", "free talk",
+      "stop lesson", "end lesson", "quit lesson", "exit lesson",
+      "take a break", "i'm done", "i'm tired", "enough for today",
+      "can we just talk", "i want to chat",
+    ];
+    if (chatPhrases.some(phrase => msg.includes(phrase))) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 // ==========================================
@@ -741,22 +788,42 @@ async function handlePauseLesson(
   chatId: number,
   context: ConversationContext,
 ): Promise<string> {
+  // Check for checklist-based lesson first, then legacy state
+  const activeChecklist = await redis.getLessonChecklist(chatId);
   const activeState = await redis.getActiveLessonState(chatId);
-  if (!activeState) {
-    const response = "You're not in an active lesson.";
+
+  if (!activeChecklist && !activeState) {
+    const response = "You're not in an active lesson. Say 'start lesson' to begin!";
     await telegram.sendMessage(chatId, response);
     return response;
+  }
+
+  // Get progress info from checklist or legacy state
+  let dayNumber: number;
+  let progress: string;
+
+  if (activeChecklist) {
+    dayNumber = activeChecklist.dayNumber;
+    const currentItem = activeChecklist.items[activeChecklist.currentIndex];
+    progress = `${activeChecklist.completedCount}/${activeChecklist.totalCount} items (${currentItem?.displayText || "in progress"})`;
+  } else {
+    dayNumber = activeState!.dayNumber;
+    progress = `${activeState!.phase} phase`;
   }
 
   const response = await generateActionResponse(
     {
       type: "lesson_paused",
-      dayNumber: activeState.dayNumber,
-      progress: `${activeState.phase} phase`,
+      dayNumber,
+      progress,
     },
     context,
   );
   await telegram.sendMessage(chatId, response);
+
+  // Note: We don't clear the checklist here - user can resume later
+  // The checklist remains in Redis for when they say "resume" or "continue"
+
   return response;
 }
 
@@ -764,27 +831,49 @@ async function handleResumeLesson(
   chatId: number,
   context: ConversationContext,
 ): Promise<string> {
+  // Check for checklist-based lesson first, then legacy state
+  const activeChecklist = await redis.getLessonChecklist(chatId);
   const activeState = await redis.getActiveLessonState(chatId);
-  if (!activeState) {
+
+  if (!activeChecklist && !activeState) {
     const response = "No paused lesson found. Say 'start lesson' to begin a new one.";
     await telegram.sendMessage(chatId, response);
     return response;
   }
 
+  // Get info for the resume message
+  let dayNumber: number;
+  let phase: string;
+
+  if (activeChecklist) {
+    dayNumber = activeChecklist.dayNumber;
+    const currentItem = activeChecklist.items[activeChecklist.currentIndex];
+    phase = currentItem?.type || "teaching";
+  } else {
+    dayNumber = activeState!.dayNumber;
+    phase = activeState!.phase;
+  }
+
   const response = await generateActionResponse(
     {
       type: "lesson_resumed",
-      dayNumber: activeState.dayNumber,
-      phase: activeState.phase,
+      dayNumber,
+      phase,
     },
     context,
   );
   await telegram.sendMessage(chatId, response);
 
-  // Continue the lesson
-  await continueLesson(chatId, context);
-
-  return response;
+  // Continue the lesson - for checklist lessons, the next message will be handled by handleChecklistLesson
+  if (activeChecklist) {
+    // Generate the next teaching prompt
+    const resumeResponse = await handleChecklistLesson(chatId, "continue", activeChecklist, context);
+    return response + "\n\n" + resumeResponse;
+  } else {
+    // Legacy flow
+    await continueLesson(chatId, context);
+    return response;
+  }
 }
 
 // ==========================================

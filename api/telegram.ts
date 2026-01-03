@@ -4,10 +4,6 @@ import type {
   Intent,
   StartLessonIntent,
   RestartLessonIntent,
-  AnswerQuestionIntent,
-  RequestHintIntent,
-  SkipExerciseIntent,
-  RequestExplanationIntent,
   ReviewVocabularyIntent,
   SetLessonTimeIntent,
   ChangePaceIntent,
@@ -40,6 +36,7 @@ import {
   advanceChecklist,
   insertClarification,
   isChecklistComplete,
+  getCurrentItemContent,
 } from "../lib/lesson-checklist.js";
 
 // Register the summarization callback to avoid circular imports
@@ -222,14 +219,6 @@ async function handleIntent(
       return handleStartLesson(chatId, intent, context);
     case "restart_lesson":
       return handleRestartLesson(chatId, intent, context);
-    case "answer_question":
-      return handleAnswerQuestion(chatId, intent, context);
-    case "request_hint":
-      return handleRequestHint(chatId, context);
-    case "skip_exercise":
-      return handleSkipExercise(chatId, context);
-    case "request_explanation":
-      return handleRequestExplanation(chatId, intent, context);
     case "pause_lesson":
       return handlePauseLesson(chatId, context);
     case "resume_lesson":
@@ -340,11 +329,19 @@ async function handleChecklistLesson(
     return response;
   }
 
-  // Generate LLM response with checklist context
+  // Get full content for current item (for TEACH/REVIEW items)
+  const itemContent = await getCurrentItemContent(checklist);
+
+  // Generate LLM response with checklist context and teaching content
   const llmResponse = await generateLessonResponse(
     checklist,
     context.messages,
     userText,
+    itemContent ? {
+      vocabularyItem: itemContent.vocabularyItem,
+      grammarPattern: itemContent.grammarPattern,
+      kanjiItem: itemContent.kanjiItem,
+    } : undefined,
   );
 
   // Handle checklist action
@@ -381,8 +378,20 @@ async function handleChecklistLesson(
         }
 
         return llmResponse.message + "\n\n" + completionMsg;
+      } else {
+        // More items remain - send response and auto-continue to next item
+        await redis.saveLessonChecklist(updatedChecklist);
+        await telegram.sendMessage(chatId, llmResponse.message);
+
+        // Auto-continue: generate prompt for next item without waiting for user
+        const nextResponse = await handleChecklistLesson(
+          chatId,
+          "continue",
+          updatedChecklist,
+          context,
+        );
+        return llmResponse.message + "\n\n" + nextResponse;
       }
-      break;
 
     case "insert":
       // Insert clarification item
@@ -392,7 +401,18 @@ async function handleChecklistLesson(
           llmResponse.insertItem.content,
         );
       }
-      break;
+      // After inserting, auto-continue to present the clarification
+      await redis.saveLessonChecklist(updatedChecklist);
+      await telegram.sendMessage(chatId, llmResponse.message);
+
+      // Auto-continue: present the clarification item
+      const clarifyResponse = await handleChecklistLesson(
+        chatId,
+        "continue",
+        updatedChecklist,
+        context,
+      );
+      return llmResponse.message + "\n\n" + clarifyResponse;
 
     case "none":
     default:
@@ -614,174 +634,6 @@ async function handleRestartLesson(
   await telegram.sendMessage(chatId, firstItemResponse.message);
 
   return restartMsg + "\n\n" + introResponse + "\n\n" + firstItemResponse.message;
-}
-
-async function handleAnswerQuestion(
-  chatId: number,
-  intent: AnswerQuestionIntent,
-  context: ConversationContext,
-): Promise<string> {
-  const activeState = await redis.getActiveLessonState(chatId);
-  if (!activeState) {
-    const response = "You're not in an active lesson. Say 'start lesson' to begin.";
-    await telegram.sendMessage(chatId, response);
-    return response;
-  }
-
-  if (!activeState.currentExercise) {
-    // Not in an exercise, treat as acknowledgment and continue
-    return continueLesson(chatId, context);
-  }
-
-  // Evaluate the answer
-  const result = await lessonEngine.evaluateAnswer(chatId, intent.answer);
-
-  let response: string;
-  if (result.isCorrect) {
-    response = await generateActionResponse(
-      {
-        type: "exercise_correct",
-        item: activeState.currentExercise.itemId,
-        streak: activeState.correctThisSession + 1,
-      },
-      context,
-    );
-  } else if (result.isPartiallyCorrect) {
-    response = await generateActionResponse(
-      { type: "conversation", message: "Almost there! Try again or say 'hint' for help." },
-      context,
-    );
-    await telegram.sendMessage(chatId, response);
-    return response;
-  } else {
-    response = await generateActionResponse(
-      {
-        type: "exercise_incorrect",
-        userAnswer: intent.answer,
-        correctAnswer: result.correctAnswer,
-        explanation: result.feedback,
-      },
-      context,
-    );
-  }
-
-  await telegram.sendMessage(chatId, response);
-
-  // Continue to next item if we should advance
-  if (result.shouldAdvance) {
-    await continueLesson(chatId, context);
-  }
-
-  return response;
-}
-
-async function handleRequestHint(
-  chatId: number,
-  context: ConversationContext,
-): Promise<string> {
-  const hint = await lessonEngine.getHint(chatId);
-
-  if (!hint) {
-    const response = "There's no active exercise to give a hint for.";
-    await telegram.sendMessage(chatId, response);
-    return response;
-  }
-
-  const state = await redis.getActiveLessonState(chatId);
-  const hintsRemaining = state?.currentExercise
-    ? state.currentExercise.hints.length - state.currentExercise.hintsGiven
-    : 0;
-
-  const response = await generateActionResponse(
-    { type: "hint_given", hint, hintsRemaining },
-    context,
-  );
-  await telegram.sendMessage(chatId, response);
-  return response;
-}
-
-async function handleSkipExercise(
-  chatId: number,
-  context: ConversationContext,
-): Promise<string> {
-  const activeState = await redis.getActiveLessonState(chatId);
-  if (!activeState) {
-    const response = "You're not in an active lesson.";
-    await telegram.sendMessage(chatId, response);
-    return response;
-  }
-
-  await lessonEngine.skipExercise(chatId);
-
-  const response = await generateActionResponse(
-    { type: "conversation", message: "Skipping this one. We'll review it later." },
-    context,
-  );
-  await telegram.sendMessage(chatId, response);
-
-  // Continue to next
-  await continueLesson(chatId, context);
-
-  return response;
-}
-
-async function handleRequestExplanation(
-  chatId: number,
-  intent: RequestExplanationIntent,
-  context: ConversationContext,
-): Promise<string> {
-  const activeState = await redis.getActiveLessonState(chatId);
-
-  // If in a lesson, explain the current item
-  if (activeState && activeState.currentExercise) {
-    const exercise = activeState.currentExercise;
-    const dayContent = await syllabus.getSyllabusDay(activeState.dayNumber);
-
-    if (dayContent) {
-      let explanation = "";
-      if (exercise.itemType === "vocabulary") {
-        const item = dayContent.vocabulary.find((v) => v.id === exercise.itemId);
-        if (item) {
-          explanation = `**${item.japanese}** (${item.reading}) means "${item.meaning}". It's a ${item.partOfSpeech}.`;
-          if (item.exampleSentence) {
-            explanation += `\n\nExample: ${item.exampleSentence}\n(${item.exampleMeaning})`;
-          }
-        }
-      } else if (exercise.itemType === "grammar") {
-        const item = dayContent.grammar.find((g) => g.id === exercise.itemId);
-        if (item) {
-          explanation = `**${item.pattern}** - ${item.meaning}\n\nFormation: ${item.formation}`;
-          if (item.examples.length > 0) {
-            explanation += `\n\nExample: ${item.examples[0].japanese}\n(${item.examples[0].meaning})`;
-          }
-        }
-      } else if (exercise.itemType === "kanji") {
-        const item = dayContent.kanji.find((k) => k.id === exercise.itemId);
-        if (item) {
-          explanation = `**${item.character}** - ${item.meanings.join(", ")}\n`;
-          explanation += `On'yomi: ${item.readings.onyomi.join(", ")}\n`;
-          explanation += `Kun'yomi: ${item.readings.kunyomi.join(", ")}`;
-        }
-      }
-
-      if (explanation) {
-        const response = await generateActionResponse(
-          { type: "conversation", message: explanation },
-          context,
-        );
-        await telegram.sendMessage(chatId, response);
-        return response;
-      }
-    }
-  }
-
-  // General explanation request
-  const response = await generateActionResponse(
-    { type: "conversation", message: intent.topic ? `Let me explain about ${intent.topic}...` : "What would you like me to explain?" },
-    context,
-  );
-  await telegram.sendMessage(chatId, response);
-  return response;
 }
 
 async function handlePauseLesson(

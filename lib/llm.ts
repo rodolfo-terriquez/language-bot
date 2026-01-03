@@ -8,6 +8,9 @@ import type {
   ConversationMessage,
   LessonChecklist,
   LessonLLMResponse,
+  VocabularyItem,
+  GrammarPattern,
+  KanjiItem,
 } from "./types.js";
 import { renderChecklistForLLM, getCurrentItem } from "./lesson-checklist.js";
 
@@ -198,20 +201,6 @@ LESSON FLOW:
     Use when user wants to restart current lesson from beginning
     dayNumber is optional - defaults to current active lesson
 
-  answer_question → {"type":"answer_question","answer":"...","inputType":"text"|"voice"}
-    When user provides an answer during practice/assessment
-    Extract their actual answer text
-
-  request_hint → {"type":"request_hint","hintLevel":1|2|3}
-    "give me a hint", "help", "I'm stuck", "hint please"
-    hintLevel: 1=small hint, 2=bigger hint, 3=almost the answer
-
-  skip_exercise → {"type":"skip_exercise","reason":"..."}
-    "skip this", "next", "I don't know", "pass"
-
-  request_explanation → {"type":"request_explanation","topic":"..."}
-    "explain this", "what does X mean", "I don't understand", "tell me more about"
-
   pause_lesson → {"type":"pause_lesson"}
     "pause", "stop lesson", "take a break", "come back later"
 
@@ -263,30 +252,31 @@ CONTEXT-AWARE PARSING:
 ═══════════════════════════════════════════════════════════════════
 
 When in an active lesson (indicated by lessonState):
-- Short answers like "hello", "konnichiwa", "です" should be answer_question, not conversation
-- Questions like "why?" or "what?" should be request_explanation
-- "I don't know" or "skip" should be skip_exercise
-- "hint" should be request_hint
+- ALL user messages during a lesson should be → conversation
+- The lesson LLM handles answers, hints, skips, explanations directly
+- Only parse explicit control intents: "pause", "stop lesson", "show progress"
 
 When NOT in an active lesson:
 - Japanese text may be free_conversation (wanting to practice)
 - "hello" or "hi" is just conversation
-- Questions about Japanese can be request_explanation with topic
+- Questions about Japanese like "how do I say X?" should be conversation (Emi will respond naturally)
 
 ═══════════════════════════════════════════════════════════════════
 EXAMPLES:
 ═══════════════════════════════════════════════════════════════════
 
-User is in lesson, asked "How do you say 'good morning'?":
-  "ohayo" → {"type":"answer_question","answer":"ohayo","inputType":"text"}
-  "おはよう" → {"type":"answer_question","answer":"おはよう","inputType":"text"}
-  "I don't remember" → {"type":"request_hint","hintLevel":1}
-  "skip" → {"type":"skip_exercise"}
+User is in lesson:
+  "ohayo" → {"type":"conversation","message":"ohayo"}
+  "おはよう" → {"type":"conversation","message":"おはよう"}
+  "I don't remember" → {"type":"conversation","message":"I don't remember"}
+  "skip" → {"type":"conversation","message":"skip"}
+  "hint" → {"type":"conversation","message":"hint"}
+  "pause" → {"type":"pause_lesson"}
 
 User is NOT in lesson:
   "start lesson" → {"type":"start_lesson"}
   "おはようございます" → {"type":"free_conversation","message":"おはようございます","inputType":"text"}
-  "how do I say thank you?" → {"type":"request_explanation","topic":"how to say thank you"}
+  "how do I say thank you?" → {"type":"conversation","message":"how do I say thank you?"}
   "hello!" → {"type":"conversation","message":"hello!"}
 `;
 
@@ -711,9 +701,29 @@ TEACHING FLOW:
    - Ask them to recall/produce the item, don't re-teach from scratch
    - Move on after one correct attempt
    - If they struggle, give a quick reminder then move on (we'll review again later)
-2. For TEACH items: Present the word/grammar/kanji, explain briefly, ask them to try
+
+2. For TEACH items: **Use the TEACHING CONTENT section below if provided**
+   - First message: PRESENT the word/pattern/kanji with its meaning
+   - Show an example if available in TEACHING CONTENT
+   - THEN ask them to try producing it
+   - Do NOT skip straight to quizzing - you MUST teach first!
+
 3. For PRACTICE items: Quiz them on what they've learned in this category
 4. For CLARIFY items: Address the specific confusion, then try the original item again
+
+CRITICAL TEACHING RULES:
+- You MUST present the item BEFORE asking them to try
+- Use examples from TEACHING CONTENT when available
+- Don't assume they know it - this is NEW material
+
+EXAMPLES MUST BE APPROPRIATE:
+- ONLY use vocabulary, kanji, or grammar the student has ALREADY LEARNED
+- Do NOT introduce new material in examples without fully explaining it
+- If an example contains unfamiliar elements, either explain them OR use a simpler example
+- When in doubt, keep examples simple and focused on just the current item
+
+BAD: Teaching いち (one) with "一本 (ippon)" - introduces unexplained kanji and counter
+GOOD: Teaching いち (one) with "Let's count: いち, に, さん!" - simple and focused
 
 WHEN TO COMPLETE:
 - User correctly says/writes the word (kanji, hiragana, or romaji all count)
@@ -730,7 +740,73 @@ WHEN TO INSERT:
 - User explicitly says they don't understand
 - User's confusion reveals a gap in knowledge
 
+HANDLING USER REQUESTS:
+- "hint" / "help" / "I'm stuck": Give a helpful hint using TEACHING CONTENT, stay on current item (action: "none")
+- "skip" / "next" / "I don't know": Say "No problem, we'll review this later" and mark complete (action: "complete")
+- "explain" / "what does X mean" / "why": Explain using TEACHING CONTENT, stay on current item (action: "none")
+
 Remember: ALWAYS output valid JSON. No markdown code blocks.`;
+
+/**
+ * Content for the current teaching item (vocabulary, grammar, or kanji)
+ */
+export interface TeachingItemContent {
+  vocabularyItem?: VocabularyItem;
+  grammarPattern?: GrammarPattern;
+  kanjiItem?: KanjiItem;
+}
+
+/**
+ * Format teaching content for the LLM system prompt
+ */
+function formatTeachingContent(content: TeachingItemContent): string {
+  let output = "\n\n---TEACHING CONTENT---\n";
+
+  if (content.vocabularyItem) {
+    const v = content.vocabularyItem;
+    output += `Word: ${v.japanese} (${v.reading})\n`;
+    output += `Meaning: ${v.meaning}\n`;
+    output += `Part of speech: ${v.partOfSpeech}\n`;
+    if (v.exampleSentence) {
+      output += `Example: ${v.exampleSentence}\n`;
+      if (v.exampleReading) output += `Reading: ${v.exampleReading}\n`;
+      if (v.exampleMeaning) output += `Translation: ${v.exampleMeaning}\n`;
+    }
+  }
+
+  if (content.grammarPattern) {
+    const g = content.grammarPattern;
+    output += `Pattern: ${g.pattern}\n`;
+    output += `Meaning: ${g.meaning}\n`;
+    output += `Formation: ${g.formation}\n`;
+    if (g.examples && g.examples.length > 0) {
+      output += `Examples:\n`;
+      for (const ex of g.examples) {
+        output += `  - ${ex.japanese} (${ex.reading}) - ${ex.meaning}\n`;
+      }
+    }
+    if (g.notes) output += `Notes: ${g.notes}\n`;
+  }
+
+  if (content.kanjiItem) {
+    const k = content.kanjiItem;
+    output += `Kanji: ${k.character}\n`;
+    output += `Meanings: ${k.meanings.join(", ")}\n`;
+    output += `On'yomi: ${k.readings.onyomi.join(", ")}\n`;
+    output += `Kun'yomi: ${k.readings.kunyomi.join(", ")}\n`;
+    output += `Strokes: ${k.strokeCount}\n`;
+    if (k.mnemonics) output += `Mnemonic: ${k.mnemonics}\n`;
+    if (k.examples && k.examples.length > 0) {
+      output += `Examples:\n`;
+      for (const ex of k.examples) {
+        output += `  - ${ex.word} (${ex.reading}) - ${ex.meaning}\n`;
+      }
+    }
+  }
+
+  output += "---END TEACHING CONTENT---";
+  return output;
+}
 
 /**
  * Generate a lesson response using the checklist-based approach.
@@ -740,6 +816,7 @@ export async function generateLessonResponse(
   checklist: LessonChecklist,
   conversationHistory: ConversationMessage[],
   userMessage: string,
+  currentItemContent?: TeachingItemContent,
 ): Promise<LessonLLMResponse> {
   const client = getClient();
 
@@ -758,6 +835,11 @@ ${LESSON_RESPONSE_INSTRUCTIONS}`;
   // Add current item focus
   if (currentItem) {
     systemPrompt += `\n\nCURRENT FOCUS: ${currentItem.type.toUpperCase()} - ${currentItem.displayText}`;
+
+    // Add detailed teaching content for TEACH and REVIEW items
+    if ((currentItem.type === "teach" || currentItem.type === "review") && currentItemContent) {
+      systemPrompt += formatTeachingContent(currentItemContent);
+    }
   } else {
     systemPrompt += `\n\nLESSON COMPLETE! All items have been covered. Congratulate the student and summarize what they learned.`;
   }

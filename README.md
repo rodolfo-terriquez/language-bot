@@ -5,11 +5,35 @@ A Telegram bot that teaches Japanese (JLPT N5) through daily conversational less
 ## Features
 
 - **30-day N5 curriculum**: Vocabulary, grammar, kanji, and cultural notes
-- **Adaptive learning**: Tracks mastery and focuses on weak areas
+- **Adaptive learning with spaced repetition**: Automatically reviews weak items from previous days
+- **Mastery tracking**: Per-item tracking of correct/incorrect answers with mastery levels (0-5)
 - **Multiple exercise types**: Translation, reading, grammar formation
 - **Voice input support**: Practice pronunciation with Whisper transcription
 - **Progress tracking**: Streaks, scores, and mastery levels
 - **Emi personality**: An energetic, adorable dog girl tutor who gets excited when you learn!
+
+## Adaptive Learning System
+
+Starting from Day 2, each lesson automatically includes review items from previous days based on spaced repetition:
+
+**How it works:**
+1. Every answer updates mastery data (correct/incorrect counts, mastery level 0-5)
+2. Items with `masteryLevel < 3` or not seen in 2+ days are flagged for review
+3. Priority is calculated: `(5 - masteryLevel) * 2 + daysSinceLastSeen * 0.5 + errorRatio * 3`
+4. Top 5 priority items are added to the start of each lesson
+
+**Example checklist with review items:**
+```
+[Lesson Checklist - Day 5: Time & Daily Routine]
+[2 review items from previous days]
+[ ] REVIEW: [Review from Day 2] おはようございます - Good morning ← CURRENT
+[ ] REVIEW: [Review from Day 3] なに (nani) - what
+[ ] TEACH: いま (ima) - now
+[ ] TEACH: じかん (jikan) - time
+...
+```
+
+Review items are kept brief (30-60 seconds each) - quick recall exercises rather than full re-teaching.
 
 ## Setup Instructions
 
@@ -156,17 +180,18 @@ All Redis keys are automatically prefixed, so `user:123` becomes `lang:user:123`
 ```
 language-bot/
 ├── api/
-│   ├── telegram.ts      # Telegram webhook handler
-│   └── notify.ts        # QStash notification handler
+│   ├── telegram.ts        # Telegram webhook handler
+│   └── notify.ts          # QStash notification handler
 ├── lib/
-│   ├── types.ts         # TypeScript interfaces
-│   ├── redis.ts         # Redis data access
-│   ├── llm.ts           # LLM integration
-│   ├── telegram.ts      # Telegram API helpers
-│   ├── qstash.ts        # Notification scheduling
-│   ├── whisper.ts       # Voice transcription
-│   ├── syllabus.ts      # Syllabus loading
-│   └── lesson-engine.ts # Lesson state machine
+│   ├── types.ts           # TypeScript interfaces
+│   ├── redis.ts           # Redis data access + mastery tracking + getReviewCandidates()
+│   ├── llm.ts             # LLM integration + lesson response generation
+│   ├── telegram.ts        # Telegram API helpers
+│   ├── qstash.ts          # Notification scheduling
+│   ├── whisper.ts         # Voice transcription
+│   ├── syllabus.ts        # Syllabus loading
+│   ├── lesson-engine.ts   # Lesson state machine
+│   └── lesson-checklist.ts # Checklist generation with adaptive review items
 ├── data/
 │   └── syllabus/
 │       └── n5/
@@ -176,6 +201,53 @@ language-bot/
 │               └── ... (30 days)
 └── package.json
 ```
+
+### Key Files for Adaptive Learning
+
+| File | Role |
+|------|------|
+| `redis.ts` | `getReviewCandidates()` - Selects items needing review using spaced repetition priority |
+| `lesson-checklist.ts` | `generateChecklist()` - Injects review items at start of lesson |
+| `llm.ts` | `LESSON_RESPONSE_INSTRUCTIONS` - Teaches Emi how to handle review items |
+| `types.ts` | `LessonChecklistItem.type` includes "review", `sourceDayNumber` for tracking origin |
+
+### Lesson Architecture
+
+The bot uses a **checklist-driven LLM approach** for lessons:
+
+```
+User Message → Intent Parsing → Checklist Flow → LLM → Response
+                    ↓
+            (only for control intents:
+             pause, progress, etc.)
+```
+
+**During lessons**, the LLM handles everything directly:
+- Evaluating answers (correct/incorrect)
+- Giving hints when asked
+- Skipping items when requested
+- Explaining concepts
+- Advancing through the checklist
+
+The LLM receives:
+1. **Checklist state**: Current item, progress, what's completed
+2. **Teaching content**: Full syllabus data (vocabulary, grammar, kanji details)
+3. **Conversation history**: Context from previous exchanges
+
+It returns:
+```json
+{
+  "message": "Teaching response to student",
+  "checklistAction": "none" | "complete" | "insert"
+}
+```
+
+This approach:
+- Reduces code complexity (no separate handlers for hints, skips, answers)
+- Allows natural conversation flow
+- Lets the LLM make contextual decisions about when to advance
+
+**Auto-continue**: When the LLM marks an item complete, the bot automatically presents the next item without waiting for user input. This prevents the lesson from stalling between items.
 
 ## Development
 

@@ -269,10 +269,6 @@ export type Intent =
   // Lesson intents
   | StartLessonIntent
   | RestartLessonIntent
-  | AnswerQuestionIntent
-  | RequestHintIntent
-  | SkipExerciseIntent
-  | RequestExplanationIntent
   | PauseLessonIntent
   | ResumeLessonIntent
   // Progress intents
@@ -301,27 +297,6 @@ export interface StartLessonIntent {
 export interface RestartLessonIntent {
   type: "restart_lesson";
   dayNumber?: number; // Optional: specific day to restart (defaults to current)
-}
-
-export interface AnswerQuestionIntent {
-  type: "answer_question";
-  answer: string;
-  inputType: "text" | "voice";
-}
-
-export interface RequestHintIntent {
-  type: "request_hint";
-  hintLevel?: 1 | 2 | 3; // Progressive hints
-}
-
-export interface SkipExerciseIntent {
-  type: "skip_exercise";
-  reason?: string;
-}
-
-export interface RequestExplanationIntent {
-  type: "request_explanation";
-  topic?: string; // What to explain
 }
 
 export interface PauseLessonIntent {

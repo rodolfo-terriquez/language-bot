@@ -498,7 +498,7 @@ export type ActionContext =
 
 export interface LessonChecklistItem {
   id: string; // "item_001"
-  type: "teach" | "practice" | "clarify";
+  type: "teach" | "practice" | "clarify" | "review";
   status: "pending" | "current" | "complete";
 
   // Content from syllabus
@@ -511,6 +511,9 @@ export interface LessonChecklistItem {
   // For dynamically inserted items
   isInserted?: boolean;
   insertedContent?: string;
+
+  // For review items: which day the content originally came from
+  sourceDayNumber?: number;
 }
 
 export interface LessonChecklist {

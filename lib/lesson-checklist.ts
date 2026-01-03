@@ -1,9 +1,14 @@
 import type { LessonChecklist, LessonChecklistItem, SyllabusDay } from "./types.js";
 import { getSyllabusDay } from "./syllabus.js";
+import { getReviewCandidates } from "./redis.js";
+
+// Configuration for adaptive learning
+const MAX_REVIEW_ITEMS = 5;
 
 /**
  * Generate a lesson checklist from the syllabus for a given day.
  * The checklist tracks teaching and practice items for the LLM to follow.
+ * For Day 2+, includes review items from previous days based on spaced repetition.
  */
 export async function generateChecklist(
   chatId: number,
@@ -14,6 +19,47 @@ export async function generateChecklist(
 
   const items: LessonChecklistItem[] = [];
   let itemCounter = 0;
+
+  // Add review items first (only for Day 2+)
+  if (dayNumber > 1) {
+    const reviewCandidates = await getReviewCandidates(chatId, dayNumber, MAX_REVIEW_ITEMS);
+
+    for (const candidate of reviewCandidates) {
+      // Fetch display text from the source day's syllabus
+      const sourceDay = await getSyllabusDay(candidate.item.dayIntroduced);
+      let displayText = candidate.item.itemId;
+
+      if (sourceDay) {
+        switch (candidate.item.itemType) {
+          case "vocabulary": {
+            const v = sourceDay.vocabulary.find((x) => x.id === candidate.item.itemId);
+            if (v) displayText = `${v.japanese} (${v.reading}) - ${v.meaning}`;
+            break;
+          }
+          case "grammar": {
+            const g = sourceDay.grammar.find((x) => x.id === candidate.item.itemId);
+            if (g) displayText = `${g.pattern} - ${g.meaning}`;
+            break;
+          }
+          case "kanji": {
+            const k = sourceDay.kanji.find((x) => x.id === candidate.item.itemId);
+            if (k) displayText = `${k.character} - ${k.meanings.join(", ")}`;
+            break;
+          }
+        }
+      }
+
+      items.push({
+        id: `item_${String(++itemCounter).padStart(3, "0")}`,
+        type: "review",
+        status: "pending",
+        contentType: candidate.item.itemType,
+        contentId: candidate.item.itemId,
+        displayText: `[Review from Day ${candidate.item.dayIntroduced}] ${displayText}`,
+        sourceDayNumber: candidate.item.dayIntroduced,
+      });
+    }
+  }
 
   // Add vocabulary teaching items
   for (const vocab of syllabus.vocabulary) {
@@ -116,6 +162,12 @@ export async function generateChecklist(
  */
 export function renderChecklistForLLM(checklist: LessonChecklist): string {
   let output = `[Lesson Checklist - Day ${checklist.dayNumber}: ${checklist.title}]\n`;
+
+  // Show review item count if any
+  const reviewCount = checklist.items.filter((i) => i.type === "review").length;
+  if (reviewCount > 0) {
+    output += `[${reviewCount} review item${reviewCount > 1 ? "s" : ""} from previous days]\n`;
+  }
 
   for (const item of checklist.items) {
     const marker = item.status === "complete" ? "[✓]" : "[ ]";
@@ -230,6 +282,7 @@ export function getProgressPercentage(checklist: LessonChecklist): number {
 /**
  * Get the syllabus content for the current item.
  * This provides the full content from the syllabus for teaching.
+ * For review items, loads content from the source day instead of current day.
  */
 export async function getCurrentItemContent(
   checklist: LessonChecklist,
@@ -243,12 +296,20 @@ export async function getCurrentItemContent(
   if (!currentItem) return null;
 
   // For practice or clarify items, just return the item
-  if (currentItem.type !== "teach") {
+  if (currentItem.type === "practice" || currentItem.type === "clarify") {
     return { item: currentItem };
   }
 
+  // Determine which day to load content from:
+  // - For review items, use the source day
+  // - For teach items, use the current lesson day
+  const contentDayNumber =
+    currentItem.type === "review" && currentItem.sourceDayNumber
+      ? currentItem.sourceDayNumber
+      : checklist.dayNumber;
+
   // Load syllabus to get full content
-  const syllabus = await getSyllabusDay(checklist.dayNumber);
+  const syllabus = await getSyllabusDay(contentDayNumber);
   if (!syllabus) return { item: currentItem };
 
   const result: {

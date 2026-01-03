@@ -588,6 +588,70 @@ export async function getMasteredItemCount(chatId: number): Promise<{
 }
 
 // ==========================================
+// Review Candidate Selection (Spaced Repetition)
+// ==========================================
+
+export interface ReviewCandidate {
+  item: ItemMastery;
+  priority: number;
+}
+
+/**
+ * Get items that should be reviewed based on spaced repetition principles.
+ * Priority is calculated based on:
+ * - Mastery level (lower = higher priority)
+ * - Time since last seen (longer = higher priority)
+ * - Error ratio (higher = higher priority)
+ */
+export async function getReviewCandidates(
+  chatId: number,
+  currentDayNumber: number,
+  limit: number = 5,
+): Promise<ReviewCandidate[]> {
+  const mastery = await getMasteryData(chatId);
+  const candidates: ReviewCandidate[] = [];
+  const now = Date.now();
+
+  const calculatePriority = (item: ItemMastery): number => {
+    const daysSinceLastSeen = (now - item.lastSeen) / (1000 * 60 * 60 * 24);
+    const masteryFactor = 5 - item.masteryLevel;
+    const total = item.correctCount + item.incorrectCount;
+    const errorRatio = total > 0 ? item.incorrectCount / total : 0;
+
+    // Priority formula: higher = more urgent review needed
+    return (masteryFactor * 2) + (daysSinceLastSeen * 0.5) + (errorRatio * 3);
+  };
+
+  // Process all categories
+  for (const [, items] of [
+    ["vocabulary", mastery.vocabulary],
+    ["grammar", mastery.grammar],
+    ["kanji", mastery.kanji],
+  ] as const) {
+    for (const item of Object.values(items)) {
+      // Skip items from current or future days (not yet taught)
+      if (item.dayIntroduced >= currentDayNumber) continue;
+
+      // Include if: low mastery OR hasn't been seen recently
+      const daysSinceLastSeen = (now - item.lastSeen) / (1000 * 60 * 60 * 24);
+      const needsReview =
+        item.masteryLevel < 3 ||
+        (item.masteryLevel < 5 && daysSinceLastSeen > 2);
+
+      if (needsReview) {
+        candidates.push({
+          item,
+          priority: calculatePriority(item),
+        });
+      }
+    }
+  }
+
+  // Sort by priority (highest first) and take top N
+  return candidates.sort((a, b) => b.priority - a.priority).slice(0, limit);
+}
+
+// ==========================================
 // Conversation History Operations
 // ==========================================
 

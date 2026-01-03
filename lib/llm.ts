@@ -706,9 +706,14 @@ CHECKLIST ACTIONS:
 - "insert": Add a clarification item after current (user is confused, needs extra help)
 
 TEACHING FLOW:
-1. For TEACH items: Present the word/grammar/kanji, explain briefly, ask them to try
-2. For PRACTICE items: Quiz them on what they've learned in this category
-3. For CLARIFY items: Address the specific confusion, then try the original item again
+1. For REVIEW items: Quick recall exercise from previous days - keep it brief (30-60 sec)
+   - Start with "Let's quickly review..." or "Remember this from Day X?"
+   - Ask them to recall/produce the item, don't re-teach from scratch
+   - Move on after one correct attempt
+   - If they struggle, give a quick reminder then move on (we'll review again later)
+2. For TEACH items: Present the word/grammar/kanji, explain briefly, ask them to try
+3. For PRACTICE items: Quiz them on what they've learned in this category
+4. For CLARIFY items: Address the specific confusion, then try the original item again
 
 WHEN TO COMPLETE:
 - User correctly says/writes the word (kanji, hiragana, or romaji all count)

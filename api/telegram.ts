@@ -42,6 +42,12 @@ import {
 // Register the summarization callback to avoid circular imports
 redis.setSummarizationCallback(generateConversationSummary);
 
+// Small debounce to avoid racing auto-continue against voice transcription arrivals
+const AUTO_CONTINUE_DEBOUNCE_MS = 800;
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
@@ -344,6 +350,13 @@ async function handleChecklistLesson(
     } : undefined,
   );
 
+  // Guard against auto-advancing due to system placeholders or empty input
+  const placeholder = userText && userText.trim();
+  const isAutoContinue = placeholder === "[AUTO_CONTINUE]" || placeholder?.toLowerCase() === "continue" || !placeholder;
+  if (isAutoContinue && llmResponse.checklistAction === "complete") {
+    llmResponse.checklistAction = "none";
+  }
+
   // Handle checklist action
   let updatedChecklist = checklist;
 
@@ -384,9 +397,10 @@ async function handleChecklistLesson(
         await telegram.sendMessage(chatId, llmResponse.message);
 
         // Auto-continue: generate prompt for next item without waiting for user
+        await sleep(AUTO_CONTINUE_DEBOUNCE_MS);
         const nextResponse = await handleChecklistLesson(
           chatId,
-          "continue",
+          "[AUTO_CONTINUE]",
           updatedChecklist,
           context,
         );
@@ -406,9 +420,10 @@ async function handleChecklistLesson(
       await telegram.sendMessage(chatId, llmResponse.message);
 
       // Auto-continue: present the clarification item
+      await sleep(AUTO_CONTINUE_DEBOUNCE_MS);
       const clarifyResponse = await handleChecklistLesson(
         chatId,
-        "continue",
+        "[AUTO_CONTINUE]",
         updatedChecklist,
         context,
       );
@@ -553,10 +568,11 @@ async function handleStartLesson(
   await telegram.sendMessage(chatId, introResponse);
 
   // Now start the first teaching item by generating the first LLM response
+  await sleep(AUTO_CONTINUE_DEBOUNCE_MS);
   const firstItemResponse = await generateLessonResponse(
     checklist,
     context.messages,
-    "Let's begin!", // Synthetic first message to kick off teaching
+    "[AUTO_CONTINUE]", // Synthetic placeholder: no student input yet
   );
 
   // Handle any checklist action from the first response
@@ -620,10 +636,11 @@ async function handleRestartLesson(
   await telegram.sendMessage(chatId, introResponse);
 
   // Start the first teaching item
+  await sleep(AUTO_CONTINUE_DEBOUNCE_MS);
   const firstItemResponse = await generateLessonResponse(
     checklist,
     context.messages,
-    "Let's begin!",
+    "[AUTO_CONTINUE]",
   );
 
   if (firstItemResponse.checklistAction === "complete") {
@@ -719,7 +736,7 @@ async function handleResumeLesson(
   // Continue the lesson - for checklist lessons, the next message will be handled by handleChecklistLesson
   if (activeChecklist) {
     // Generate the next teaching prompt
-    const resumeResponse = await handleChecklistLesson(chatId, "continue", activeChecklist, context);
+    const resumeResponse = await handleChecklistLesson(chatId, "[AUTO_CONTINUE]", activeChecklist, context);
     return response + "\n\n" + resumeResponse;
   } else {
     // Legacy flow

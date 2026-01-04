@@ -763,6 +763,12 @@ HANDLING USER REQUESTS:
 - "skip" / "next" / "I don't know": Say "No problem, we'll review this later" and mark complete (action: "complete")
 - "explain" / "what does X mean" / "why": Explain using TEACHING CONTENT, stay on current item (action: "none")
 
+AUTO-CONTINUE PLACEHOLDER:
+- The message "[AUTO_CONTINUE]" indicates a system placeholder (no new student input).
+- When the latest user message is "[AUTO_CONTINUE]" OR empty/irrelevant, DO NOT mark items complete.
+- Present or continue with the current/next item and set checklistAction to "none".
+- Only mark "complete" when the student's actual message demonstrates understanding or they explicitly say "skip"/"next"/"I don't know".
+
 Remember: ALWAYS output valid JSON. No markdown code blocks.`;
 
 /**

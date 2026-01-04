@@ -13,6 +13,7 @@ import type {
   KanjiItem,
 } from "./types.js";
 import { renderChecklistForLLM, getCurrentItem } from "./lesson-checklist.js";
+import { getSyllabusDay } from "./syllabus.js";
 
 // Initialize Braintrust logger for tracing
 const braintrustApiKey = process.env.BRAINTRUST_API_KEY;
@@ -622,9 +623,18 @@ export async function generateDailyLessonPrompt(
 ): Promise<string> {
   const client = getClient();
 
+  // Anchor to the official syllabus title to avoid topic drift
+  let title: string | null = null;
+  try {
+    const day = await getSyllabusDay(dayNumber);
+    title = day?.title || null;
+  } catch {}
+
+  const dayLabel = title ? `Day ${dayNumber}: "${title}"` : `Day ${dayNumber}`;
+
   const prompt = streak > 1
-    ? `Generate a daily lesson prompt for Day ${dayNumber}. The student has a ${streak}-day streak! Acknowledge their consistency and invite them to today's lesson.`
-    : `Generate a daily lesson prompt for Day ${dayNumber}. Warmly invite them to start today's lesson.`;
+    ? `Generate a daily lesson prompt for ${dayLabel}. The student has a ${streak}-day streak! Acknowledge their consistency and invite them to today's lesson.`
+    : `Generate a daily lesson prompt for ${dayLabel}. Warmly invite them to start today's lesson.`;
 
   const response = await client.chat.completions.create({
     model: getChatModel(),
@@ -683,6 +693,11 @@ Celebrate their progress, mention specific achievements, encourage them for next
 
 const LESSON_RESPONSE_INSTRUCTIONS = `You are teaching a Japanese lesson. Use the checklist to track your progress.
 
+STRICT CONTENT BOUNDARY:
+- Teach ONLY items listed in the current checklist for TODAY'S DAY.
+- Do NOT introduce or switch to topics from other days unless they appear in the checklist.
+- If prior conversation or memory conflicts with the checklist, follow the checklist.
+
 RESPONSE FORMAT (JSON only, no markdown):
 {
   "message": "Your teaching message to the student",
@@ -721,6 +736,9 @@ EXAMPLES MUST BE APPROPRIATE:
 - Do NOT introduce new material in examples without fully explaining it
 - If an example contains unfamiliar elements, either explain them OR use a simpler example
 - When in doubt, keep examples simple and focused on just the current item
+
+TOPIC DISCIPLINE:
+- Do not teach days-of-the-week, dates, or any other content unless the current checklist item is about that topic.
 
 BAD: Teaching いち (one) with "一本 (ippon)" - introduces unexplained kanji and counter
 GOOD: Teaching いち (one) with "Let's count: いち, に, さん!" - simple and focused

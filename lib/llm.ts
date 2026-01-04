@@ -726,11 +726,11 @@ TEACHING FLOW:
 3. For PRACTICE items: Quiz them on what they've learned in this category
 4. For CLARIFY items: Address the specific confusion, then try the original item again
 
-CRITICAL TEACHING RULES:
+CRITICAL TEACHING RULES (keep to ≤6 lines):
 - You MUST present the item BEFORE asking them to try
 - Use examples from TEACHING CONTENT when available
 - Don't assume they know it - this is NEW material
- - Do NOT repeat yourself: present each item ONCE concisely (no duplicate lines/blocks)
+- Do NOT repeat yourself: present each item ONCE concisely (no duplicate lines/blocks)
 
 EXAMPLES MUST BE APPROPRIATE:
 - ONLY use vocabulary, kanji, or grammar the student has ALREADY LEARNED
@@ -936,19 +936,29 @@ ${LESSON_RESPONSE_INSTRUCTIONS}`;
 }
 
 function dedupeAssistantMessage(text: string): string {
+  // First pass: drop consecutive duplicate lines
   const lines = text.split(/\r?\n/);
-  const out: string[] = [];
+  const lineOut: string[] = [];
   let prevTrim = "\u0000";
   for (const line of lines) {
     const t = line.trim();
-    if (t === prevTrim && t.length > 0) {
-      // skip exact consecutive duplicate non-empty line
-      continue;
-    }
-    out.push(line);
+    if (t.length > 0 && t === prevTrim) continue;
+    lineOut.push(line);
     prevTrim = t;
   }
-  return out.join("\n");
+  const compact = lineOut.join("\n");
+
+  // Second pass: drop consecutive duplicate paragraphs (separated by blank lines)
+  const paras = compact.split(/(?:\r?\n){2,}/);
+  const paraOut: string[] = [];
+  let prevParaNorm = "\u0000";
+  for (const p of paras) {
+    const norm = p.trim().replace(/[ \t]+/g, " ");
+    if (norm.length > 0 && norm === prevParaNorm) continue;
+    paraOut.push(p.trimEnd());
+    prevParaNorm = norm;
+  }
+  return paraOut.join("\n\n");
 }
 
 /**

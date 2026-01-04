@@ -1,4 +1,5 @@
 import type { TelegramFile } from "./types.js";
+import { getLastAssistantMessage, setLastAssistantMessage } from "./redis.js";
 
 const TELEGRAM_API = "https://api.telegram.org/bot";
 
@@ -13,6 +14,19 @@ function getToken(): string {
 export async function sendMessage(chatId: number, text: string): Promise<void> {
   const token = getToken();
   console.log(`[Telegram] Sending message to ${chatId}, length: ${text.length}`);
+
+  // Duplicate suppression: avoid sending the exact same assistant message twice in a row
+  try {
+    const last = await getLastAssistantMessage(chatId);
+    const now = Date.now();
+    const current = text.trim();
+    if (last && last.text?.trim() === current && now - last.timestamp < 120000) {
+      console.log(`[Telegram] Skipping duplicate message to ${chatId}`);
+      return;
+    }
+  } catch (e) {
+    console.warn(`[Telegram] Could not check last message for ${chatId}:`, e);
+  }
 
   // Try with Markdown first
   let response = await fetch(`${TELEGRAM_API}${token}/sendMessage`, {
@@ -30,7 +44,7 @@ export async function sendMessage(chatId: number, text: string): Promise<void> {
     const errorText = await response.text();
 
     // Check if it's a parsing error (common with different model outputs)
-    if (errorText.includes("can't parse") || errorText.includes("Bad Request")) {
+    if (errorText.includes("can't parse")) {
       console.warn("Markdown parsing failed, retrying without parse_mode:", errorText);
 
       response = await fetch(`${TELEGRAM_API}${token}/sendMessage`, {
@@ -47,12 +61,14 @@ export async function sendMessage(chatId: number, text: string): Promise<void> {
         throw new Error(`Failed to send message: ${retryError}`);
       }
       console.log(`[Telegram] Message sent successfully (plain text fallback)`);
+      try { await setLastAssistantMessage(chatId, text); } catch {}
       return;
     }
 
     throw new Error(`Failed to send message: ${errorText}`);
   }
   console.log(`[Telegram] Message sent successfully`);
+  try { await setLastAssistantMessage(chatId, text); } catch {}
 }
 
 export async function getFilePath(fileId: string): Promise<string> {

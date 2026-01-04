@@ -921,17 +921,34 @@ ${LESSON_RESPONSE_INSTRUCTIONS}`;
     }
 
     console.log(`[generateLessonResponse] Action: ${parsed.checklistAction}, Message length: ${parsed.message.length}`);
-
+    // De-duplicate any accidental repeated lines/blocks in the assistant message
+    parsed.message = dedupeAssistantMessage(parsed.message);
     return parsed;
   } catch (error) {
     console.error("[generateLessonResponse] Failed to parse JSON:", content, error);
 
     // Fallback: treat the whole response as the message
     return {
-      message: content,
+      message: dedupeAssistantMessage(content),
       checklistAction: "none",
     };
   }
+}
+
+function dedupeAssistantMessage(text: string): string {
+  const lines = text.split(/\r?\n/);
+  const out: string[] = [];
+  let prevTrim = "\u0000";
+  for (const line of lines) {
+    const t = line.trim();
+    if (t === prevTrim && t.length > 0) {
+      // skip exact consecutive duplicate non-empty line
+      continue;
+    }
+    out.push(line);
+    prevTrim = t;
+  }
+  return out.join("\n");
 }
 
 /**

@@ -540,7 +540,8 @@ async function handleStartLesson(
     await telegram.sendMessage(chatId, response);
 
     // Send the first teaching prompt to resume
-    const resumeResponse = await handleChecklistLesson(chatId, "continue", existingChecklist, context);
+    await sleep(AUTO_CONTINUE_DEBOUNCE_MS);
+    const resumeResponse = await handleChecklistLesson(chatId, "[AUTO_CONTINUE]", existingChecklist, context);
     return response + "\n\n" + resumeResponse;
   }
 

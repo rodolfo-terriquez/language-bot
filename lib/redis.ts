@@ -57,6 +57,9 @@ const ACTIVE_CHATS_KEY = () => `${getKeyPrefix()}active_chats`;
 const PROCESSED_MESSAGE_KEY = (chatId: number, messageId: number) =>
   `${getKeyPrefix()}processed:${chatId}:${messageId}`;
 
+// Last assistant message per chat (duplicate suppression)
+const LAST_ASSISTANT_MSG_KEY = (chatId: number) => `${getKeyPrefix()}last_assistant_msg:${chatId}`;
+
 // Syllabus cache
 const SYLLABUS_KEY = (level: string) => `${getKeyPrefix()}syllabus:${level}`;
 const SYLLABUS_DAY_KEY = (level: string, dayNumber: number) =>
@@ -139,6 +142,25 @@ export async function tryMarkMessageProcessed(
   const result = await (redis as any).set(key, "1", { nx: true, ex: ttlSeconds });
   // Result is "OK" on success, null if key already exists
   return result === "OK";
+}
+
+export async function getLastAssistantMessage(chatId: number): Promise<{ text: string; timestamp: number } | null> {
+  const redis = getClient();
+  const raw = await redis.get<string>(LAST_ASSISTANT_MSG_KEY(chatId));
+  if (!raw) return null;
+  try {
+    const data = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (data && typeof data.text === "string" && typeof data.timestamp === "number") {
+      return data;
+    }
+  } catch {}
+  return null;
+}
+
+export async function setLastAssistantMessage(chatId: number, text: string, ttlSeconds = 600): Promise<void> {
+  const redis = getClient();
+  const payload = JSON.stringify({ text, timestamp: Date.now() });
+  await (redis as any).set(LAST_ASSISTANT_MSG_KEY(chatId), payload, { ex: ttlSeconds });
 }
 
 export async function setLessonTime(

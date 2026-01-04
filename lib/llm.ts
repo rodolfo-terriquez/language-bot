@@ -730,6 +730,7 @@ CRITICAL TEACHING RULES:
 - You MUST present the item BEFORE asking them to try
 - Use examples from TEACHING CONTENT when available
 - Don't assume they know it - this is NEW material
+ - Do NOT repeat yourself: present each item ONCE concisely (no duplicate lines/blocks)
 
 EXAMPLES MUST BE APPROPRIATE:
 - ONLY use vocabulary, kanji, or grammar the student has ALREADY LEARNED

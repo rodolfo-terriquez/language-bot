@@ -70,6 +70,18 @@ export default async function handler(
     const { message } = update;
     chatId = message.chat.id;
 
+    // Idempotency: avoid processing the same Telegram message twice (webhook retries)
+    try {
+      const processed = await redis.tryMarkMessageProcessed(chatId, message.message_id, 180);
+      if (!processed) {
+        console.log(`[${chatId}] Duplicate webhook message_id ${message.message_id} ignored`);
+        res.status(200).json({ ok: true });
+        return;
+      }
+    } catch (e) {
+      console.warn(`[${chatId}] Could not set idempotency key for message ${message.message_id}:`, e);
+    }
+
     // Check if user is allowed
     const allowedUsers = process.env.ALLOWED_USERS;
     if (allowedUsers) {

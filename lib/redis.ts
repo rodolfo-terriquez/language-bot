@@ -53,6 +53,10 @@ const CONVERSATION_KEY = (chatId: number) => `${getKeyPrefix()}conversation:${ch
 // Active chats tracking
 const ACTIVE_CHATS_KEY = () => `${getKeyPrefix()}active_chats`;
 
+// Processed Telegram messages (idempotency)
+const PROCESSED_MESSAGE_KEY = (chatId: number, messageId: number) =>
+  `${getKeyPrefix()}processed:${chatId}:${messageId}`;
+
 // Syllabus cache
 const SYLLABUS_KEY = (level: string) => `${getKeyPrefix()}syllabus:${level}`;
 const SYLLABUS_DAY_KEY = (level: string, dayNumber: number) =>
@@ -117,6 +121,24 @@ export async function updateUserProfile(profile: UserProfile): Promise<void> {
   const redis = getClient();
   profile.updatedAt = Date.now();
   await redis.set(USER_PROFILE_KEY(profile.chatId), JSON.stringify(profile));
+}
+
+/**
+ * Attempt to mark a Telegram message as processed. Returns true if this is the first time
+ * seeing this message (i.e., we should process it), or false if it was already processed.
+ * Uses NX + EX to avoid reprocessing on webhook retries or duplicates.
+ */
+export async function tryMarkMessageProcessed(
+  chatId: number,
+  messageId: number,
+  ttlSeconds = 120,
+): Promise<boolean> {
+  const redis = getClient();
+  const key = PROCESSED_MESSAGE_KEY(chatId, messageId);
+  // Upstash Redis supports NX/EX options on SET
+  const result = await (redis as any).set(key, "1", { nx: true, ex: ttlSeconds });
+  // Result is "OK" on success, null if key already exists
+  return result === "OK";
 }
 
 export async function setLessonTime(

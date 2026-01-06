@@ -1,0 +1,562 @@
+{
+  "version": "1.0",
+  "source": "Tae Kim's Guide to Learning Japanese",
+  "totalLessons": 48,
+  "lessons": [
+    {
+      "lessonNumber": 1,
+      "topicId": "tk_01",
+      "topic": "Writing System",
+      "subPatterns": ["Hiragana", "Katakana", "Kanji (stroke order, readings, compounds)"],
+      "prerequisites": [],
+      "description": "Introduction to the Japanese writing system including Hiragana, Katakana, and basic Kanji concepts."
+    },
+    {
+      "lessonNumber": 2,
+      "topicId": "tk_02",
+      "topic": "State of Being",
+      "subPatterns": ["だ", "です", "じゃない", "だった", "じゃなかった", "ではありません"],
+      "prerequisites": ["tk_01"],
+      "description": "Learn how to express states of being using the copula in various forms - casual, polite, negative, and past."
+    },
+    {
+      "lessonNumber": 3,
+      "topicId": "tk_03",
+      "topic": "Particles",
+      "subPatterns": [
+        "は (topic)",
+        "が (subject)",
+        "を (object)",
+        "も (also)",
+        "の (possessive)",
+        "へ (direction)",
+        "に (time/location)",
+        "で (location/means)",
+        "と (and/with)",
+        "から (from)",
+        "まで (until)"
+      ],
+      "prerequisites": ["tk_02"],
+      "description": "Master essential Japanese particles that mark grammatical relationships in sentences."
+    },
+    {
+      "lessonNumber": 4,
+      "topicId": "tk_04",
+      "topic": "Adjectives",
+      "subPatterns": [
+        "い-adjective: ～い, ～くない, ～かった, ～くなかった",
+        "な-adjective: ～だ, ～じゃない, ～だった, ～じゃなかった"
+      ],
+      "prerequisites": ["tk_02"],
+      "description": "Learn the two types of Japanese adjectives and their conjugation patterns."
+    },
+    {
+      "lessonNumber": 5,
+      "topicId": "tk_05",
+      "topic": "Verb Basics",
+      "subPatterns": [
+        "Dictionary form (書く)",
+        "ます form (書きます)",
+        "Negative (書かない)",
+        "Past (書いた)",
+        "Stem form (書き)"
+      ],
+      "prerequisites": ["tk_02"],
+      "description": "Introduction to Japanese verbs and their basic conjugation forms."
+    },
+    {
+      "lessonNumber": 6,
+      "topicId": "tk_06",
+      "topic": "Negative Verbs",
+      "subPatterns": [
+        "～ない",
+        "～ません",
+        "～なかった",
+        "～ませんでした",
+        "ある→ない (irregular)"
+      ],
+      "prerequisites": ["tk_05"],
+      "description": "Learn to form negative verb conjugations in both casual and polite speech."
+    },
+    {
+      "lessonNumber": 7,
+      "topicId": "tk_07",
+      "topic": "Past Tense",
+      "subPatterns": [
+        "～た (plain past)",
+        "～ました (polite past)",
+        "い-adjective past (～かった)"
+      ],
+      "prerequisites": ["tk_05", "tk_04"],
+      "description": "Master past tense conjugations for verbs and adjectives."
+    },
+    {
+      "lessonNumber": 8,
+      "topicId": "tk_08",
+      "topic": "Verb Types",
+      "subPatterns": [
+        "Godan (う-verbs)",
+        "Ichidan (る-verbs)",
+        "Irregular (する, くる)",
+        "Conditional stem (すれば)",
+        "Passive stem (される)"
+      ],
+      "prerequisites": ["tk_05"],
+      "description": "Understand the three verb groups and their conjugation patterns."
+    },
+    {
+      "lessonNumber": 9,
+      "topicId": "tk_09",
+      "topic": "Subordinate Clauses",
+      "subPatterns": [
+        "Relative clause: noun + [plain form clause]",
+        "の/こと nominalization",
+        "Embedded questions"
+      ],
+      "prerequisites": ["tk_05", "tk_03"],
+      "description": "Learn to create complex sentences with subordinate clauses and noun modification."
+    },
+    {
+      "lessonNumber": 10,
+      "topicId": "tk_10",
+      "topic": "Adverbs & Gobi",
+      "subPatterns": [
+        "Adverbs from adjectives (早く)",
+        "すぐ",
+        "たいてい",
+        "だけ",
+        "まだ",
+        "もう",
+        "いつも"
+      ],
+      "prerequisites": ["tk_04"],
+      "description": "Create adverbs from adjectives and learn common adverbs."
+    },
+    {
+      "lessonNumber": 11,
+      "topicId": "tk_11",
+      "topic": "Polite Form",
+      "subPatterns": [
+        "ます・ません・ました・ませんでした",
+        "です・ではありません",
+        "Honorific -san, -sama, -kun"
+      ],
+      "prerequisites": ["tk_05", "tk_02"],
+      "description": "Master polite speech patterns for formal situations."
+    },
+    {
+      "lessonNumber": 12,
+      "topicId": "tk_12",
+      "topic": "Addressing People",
+      "subPatterns": ["さん", "くん", "ちゃん", "様", "Social implications"],
+      "prerequisites": ["tk_11"],
+      "description": "Learn appropriate honorific suffixes for addressing people."
+    },
+    {
+      "lessonNumber": 13,
+      "topicId": "tk_13",
+      "topic": "Question Marker",
+      "subPatterns": [
+        "か (yes/no)",
+        "の (informal)",
+        "なに (what)",
+        "どこ (where)",
+        "だれ (who)",
+        "いつ (when)"
+      ],
+      "prerequisites": ["tk_03"],
+      "description": "Form questions using question particles and interrogatives."
+    },
+    {
+      "lessonNumber": 14,
+      "topicId": "tk_14",
+      "topic": "Complex Sentences",
+      "subPatterns": [
+        "～たり～たり (listing examples)",
+        "～し (listing reasons)",
+        "～けど (although)",
+        "～ので (since)",
+        "～から (because)"
+      ],
+      "prerequisites": ["tk_07", "tk_09"],
+      "description": "Connect ideas using conjunctions and complex sentence structures."
+    },
+    {
+      "lessonNumber": 15,
+      "topicId": "tk_15",
+      "topic": "Enduring States",
+      "subPatterns": [
+        "～ている (ongoing)",
+        "～てある (resultant state)",
+        "～ておく (do in advance)"
+      ],
+      "prerequisites": ["tk_07"],
+      "description": "Express ongoing actions, resultant states, and preparatory actions."
+    },
+    {
+      "lessonNumber": 16,
+      "topicId": "tk_16",
+      "topic": "Potential Form",
+      "subPatterns": [
+        "Godan potential: 書ける",
+        "Ichidan: 見られる",
+        "できる (can do)",
+        "Polite: 書けます"
+      ],
+      "prerequisites": ["tk_08"],
+      "description": "Express ability and possibility with potential verb forms."
+    },
+    {
+      "lessonNumber": 17,
+      "topicId": "tk_17",
+      "topic": "Using にする／になる",
+      "subPatterns": [
+        "Noun + にする (make into)",
+        "Noun + になる (become)",
+        "ことにする (decide to)"
+      ],
+      "prerequisites": ["tk_05", "tk_03"],
+      "description": "Express transformation and decisions using にする and になる."
+    },
+    {
+      "lessonNumber": 18,
+      "topicId": "tk_18",
+      "topic": "Conditionals",
+      "subPatterns": [
+        "～たら (conditional when)",
+        "～なら (if/circumstantial)",
+        "～ば (if)",
+        "～と (automatic result)"
+      ],
+      "prerequisites": ["tk_07", "tk_08"],
+      "description": "Express conditional statements using various patterns."
+    },
+    {
+      "lessonNumber": 19,
+      "topicId": "tk_19",
+      "topic": "Have to do...",
+      "subPatterns": ["～なければ (unless)", "～なければならない (have to)", "～なくては (unless)"],
+      "prerequisites": ["tk_06", "tk_18"],
+      "description": "Express obligation and necessity."
+    },
+    {
+      "lessonNumber": 20,
+      "topicId": "tk_20",
+      "topic": "Desire",
+      "subPatterns": ["Verb stem + たい (want to)", "Noun + がほしい (want noun)"],
+      "prerequisites": ["tk_05"],
+      "description": "Express wants and desires for actions and objects."
+    },
+    {
+      "lessonNumber": 21,
+      "topicId": "tk_21",
+      "topic": "Quotation",
+      "subPatterns": [
+        "～と言う (to say)",
+        "～と思う (to think)",
+        "～って (colloquial)",
+        "～と聞く (ask/hear)"
+      ],
+      "prerequisites": ["tk_09"],
+      "description": "Quote speech and thoughts using quotation patterns."
+    },
+    {
+      "lessonNumber": 22,
+      "topicId": "tk_22",
+      "topic": "Defining Things",
+      "subPatterns": ["～の (nominalizing)", "～こと (abstract)", "～もの (tangible)"],
+      "prerequisites": ["tk_09"],
+      "description": "Nominalize verbs and distinguish between abstract and concrete concepts."
+    },
+    {
+      "lessonNumber": 23,
+      "topicId": "tk_23",
+      "topic": "Trying Things",
+      "subPatterns": ["Verb-te form + みる (try doing)"],
+      "prerequisites": ["tk_15"],
+      "description": "Express attempting or trying to do something."
+    },
+    {
+      "lessonNumber": 24,
+      "topicId": "tk_24",
+      "topic": "Giving/Receiving",
+      "subPatterns": [
+        "あげる (give out)",
+        "くれる (give to me)",
+        "もらう (receive)",
+        "やる (informal give)",
+        "くださる・いただく (polite)"
+      ],
+      "prerequisites": ["tk_11"],
+      "description": "Master the intricate system of giving and receiving verbs."
+    },
+    {
+      "lessonNumber": 25,
+      "topicId": "tk_25",
+      "topic": "Making Requests",
+      "subPatterns": [
+        "～てください (please do)",
+        "～てくれ (do for me)",
+        "～てほしい (want you to)",
+        "～をお願いします"
+      ],
+      "prerequisites": ["tk_24", "tk_15"],
+      "description": "Make polite and casual requests."
+    },
+    {
+      "lessonNumber": 26,
+      "topicId": "tk_26",
+      "topic": "Numbers",
+      "subPatterns": [
+        "Basic numerals",
+        "Counter suffixes (～人, ～本, ～枚, ～個)",
+        "Ordinals (first, second)"
+      ],
+      "prerequisites": ["tk_01"],
+      "description": "Learn numbers and counter words for different objects."
+    },
+    {
+      "lessonNumber": 27,
+      "topicId": "tk_27",
+      "topic": "Causative/Passive",
+      "subPatterns": [
+        "Causative: させる/せる (make/let)",
+        "Passive: られる/れる",
+        "Causative-passive: される/させられる"
+      ],
+      "prerequisites": ["tk_08", "tk_16"],
+      "description": "Express causative and passive voice constructions."
+    },
+    {
+      "lessonNumber": 28,
+      "topicId": "tk_28",
+      "topic": "Honorific/Humble",
+      "subPatterns": [
+        "お～になる (honorific)",
+        "～なさる",
+        "～くださる",
+        "～いたす (humble)",
+        "～いただく",
+        "召し上がる"
+      ],
+      "prerequisites": ["tk_11", "tk_24"],
+      "description": "Master honorific and humble speech patterns for formal situations."
+    },
+    {
+      "lessonNumber": 29,
+      "topicId": "tk_29",
+      "topic": "Unintended",
+      "subPatterns": ["～てしまう (do inadvertently)", "～ちゃう/～じゃう (casual contracted)"],
+      "prerequisites": ["tk_15"],
+      "description": "Express unintended actions or completion with regret."
+    },
+    {
+      "lessonNumber": 30,
+      "topicId": "tk_30",
+      "topic": "Generic Nouns",
+      "subPatterns": [
+        "～こと (abstract, events)",
+        "～もの (physical, tangible)",
+        "Nominalizing roles"
+      ],
+      "prerequisites": ["tk_22"],
+      "description": "Deeper exploration of こと and もの as generic nouns."
+    },
+    {
+      "lessonNumber": 31,
+      "topicId": "tk_31",
+      "topic": "Certainty",
+      "subPatterns": [
+        "はず (should be)",
+        "だろう (probably)",
+        "きっと (surely)",
+        "に違いない (sure to be)",
+        "たしか (certain)"
+      ],
+      "prerequisites": ["tk_14"],
+      "description": "Express degrees of certainty and probability."
+    },
+    {
+      "lessonNumber": 32,
+      "topicId": "tk_32",
+      "topic": "Expressing Similarity",
+      "subPatterns": [
+        "～みたい (looks like)",
+        "～よう (like/as if)",
+        "～らしい (appears)",
+        "～っぽい (has tendency)"
+      ],
+      "prerequisites": ["tk_04", "tk_14"],
+      "description": "Express similarity, resemblance, and hearsay."
+    },
+    {
+      "lessonNumber": 33,
+      "topicId": "tk_33",
+      "topic": "Comparisons",
+      "subPatterns": [
+        "より (than)",
+        "ほど (extent)",
+        "の方が (is more)",
+        "一番 (the most)",
+        "同じ (same as)"
+      ],
+      "prerequisites": ["tk_04", "tk_03"],
+      "description": "Make comparisons between things."
+    },
+    {
+      "lessonNumber": 34,
+      "topicId": "tk_34",
+      "topic": "Easy or Hard",
+      "subPatterns": ["Verb-stem + やすい (easy)", "Verb-stem + にくい (hard)"],
+      "prerequisites": ["tk_05", "tk_04"],
+      "description": "Express ease or difficulty of actions."
+    },
+    {
+      "lessonNumber": 35,
+      "topicId": "tk_35",
+      "topic": "Negative Verbs 2",
+      "subPatterns": [
+        "～ず",
+        "～ぬ (classical negatives)",
+        "ではない (is not, formal)",
+        "Various negative forms"
+      ],
+      "prerequisites": ["tk_06"],
+      "description": "Advanced negative forms including classical and literary styles."
+    },
+    {
+      "lessonNumber": 36,
+      "topicId": "tk_36",
+      "topic": "Reasoning",
+      "subPatterns": ["から (because)", "ので (because/so)", "Explanation forms"],
+      "prerequisites": ["tk_14"],
+      "description": "Express reasons and explanations with various conjunctions."
+    },
+    {
+      "lessonNumber": 37,
+      "topicId": "tk_37",
+      "topic": "Timed Verbs",
+      "subPatterns": [
+        "～ながら (while doing)",
+        "～間に (during)",
+        "～うちに (while still)",
+        "～とき (when)"
+      ],
+      "prerequisites": ["tk_15"],
+      "description": "Express simultaneous actions and time-related conditions."
+    },
+    {
+      "lessonNumber": 38,
+      "topicId": "tk_38",
+      "topic": "Lack of Change",
+      "subPatterns": ["～まま (unchanged state)", "～っぱなし (left as is)", "持ったまま"],
+      "prerequisites": ["tk_15"],
+      "description": "Express unchanged states and continuous conditions."
+    },
+    {
+      "lessonNumber": 39,
+      "topicId": "tk_39",
+      "topic": "Formal Expressions",
+      "subPatterns": [
+        "～でございます (very formal)",
+        "お～します (humble)",
+        "お～いたします (very polite)"
+      ],
+      "prerequisites": ["tk_28"],
+      "description": "Master very formal expressions for business and service contexts."
+    },
+    {
+      "lessonNumber": 40,
+      "topicId": "tk_40",
+      "topic": "Things that should be",
+      "subPatterns": ["～べき (should do)", "～はず (should be)", "～ないほうがいい (should not)"],
+      "prerequisites": ["tk_19", "tk_31"],
+      "description": "Express obligations, expectations, and recommendations."
+    },
+    {
+      "lessonNumber": 41,
+      "topicId": "tk_41",
+      "topic": "Minimum Expectation",
+      "subPatterns": ["くらい/ぐらい (about, at least)", "少なくとも (at least)"],
+      "prerequisites": ["tk_33"],
+      "description": "Express minimum expectations and approximations."
+    },
+    {
+      "lessonNumber": 42,
+      "topicId": "tk_42",
+      "topic": "Showing Signs",
+      "subPatterns": ["～がる (shows feeling, 3rd person)", "～たがる (wants, 3rd person)"],
+      "prerequisites": ["tk_20"],
+      "description": "Describe third-person desires and emotional displays."
+    },
+    {
+      "lessonNumber": 43,
+      "topicId": "tk_43",
+      "topic": "Advanced Feasibility",
+      "subPatterns": [
+        "わけがない (no way that)",
+        "Verb-stem + にくい (hard to)",
+        "～えない",
+        "～できない"
+      ],
+      "prerequisites": ["tk_16", "tk_34"],
+      "description": "Express impossibility and advanced potential forms."
+    },
+    {
+      "lessonNumber": 44,
+      "topicId": "tk_44",
+      "topic": "Tendencies",
+      "subPatterns": ["～がち (tends to)", "～やすい (likely to)", "よく (often)"],
+      "prerequisites": ["tk_34"],
+      "description": "Express tendencies and frequent occurrences."
+    },
+    {
+      "lessonNumber": 45,
+      "topicId": "tk_45",
+      "topic": "Advanced Volitional",
+      "subPatterns": [
+        "～う/よう (let's, volitional)",
+        "～つもり (intend to)",
+        "～と思っている (thinking of)"
+      ],
+      "prerequisites": ["tk_20", "tk_21"],
+      "description": "Express intentions and volitional forms."
+    },
+    {
+      "lessonNumber": 46,
+      "topicId": "tk_46",
+      "topic": "Covering",
+      "subPatterns": [
+        "～っぱなし (left as is, continuously)",
+        "Verb-stem + 放し (leaving/keeping)"
+      ],
+      "prerequisites": ["tk_38"],
+      "description": "Express continuous unchanged states with nuance."
+    },
+    {
+      "lessonNumber": 47,
+      "topicId": "tk_47",
+      "topic": "Close Actions",
+      "subPatterns": [
+        "～かける (about to start)",
+        "～終わる (finish doing)",
+        "Verb-stem + そう (seems to)"
+      ],
+      "prerequisites": ["tk_15", "tk_32"],
+      "description": "Express actions about to happen or just completed."
+    },
+    {
+      "lessonNumber": 48,
+      "topicId": "tk_48",
+      "topic": "Miscellaneous",
+      "subPatterns": [
+        "Contractions (てる for ている)",
+        "Informal forms",
+        "Slang",
+        "Sentence-ending particles (ね, よ, ぞ, ぜ, さ, な)"
+      ],
+      "prerequisites": ["tk_15"],
+      "description": "Learn casual contractions, slang, and sentence-ending particles."
+    }
+  ]
+}

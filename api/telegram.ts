@@ -476,6 +476,12 @@ async function handleChecklistLesson(
         await redis.saveLessonChecklist(updatedChecklist);
         await telegram.sendMessage(chatId, llmResponse.message);
 
+        // Add current message to conversation before auto-continuing
+        await redis.addToConversation(chatId, userText, llmResponse.message, {
+          dayNumber: checklist.dayNumber,
+          phase: "vocabulary_teaching",
+        });
+
         // Auto-continue: generate prompt for next item without waiting for user
         await sleep(AUTO_CONTINUE_DEBOUNCE_MS);
         const nextResponse = await handleChecklistLesson(
@@ -484,7 +490,8 @@ async function handleChecklistLesson(
           updatedChecklist,
           context,
         );
-        return llmResponse.message + "\n\n" + nextResponse;
+        // Return only the final message (previous ones already saved to conversation)
+        return nextResponse;
       }
 
     case "insert":
@@ -496,6 +503,12 @@ async function handleChecklistLesson(
       await redis.saveLessonChecklist(updatedChecklist);
       await telegram.sendMessage(chatId, llmResponse.message);
 
+      // Add current message to conversation before auto-continuing
+      await redis.addToConversation(chatId, userText, llmResponse.message, {
+        dayNumber: checklist.dayNumber,
+        phase: "vocabulary_teaching",
+      });
+
       // Auto-continue: present the clarification item
       await sleep(AUTO_CONTINUE_DEBOUNCE_MS);
       const clarifyResponse = await handleChecklistLesson(
@@ -504,7 +517,8 @@ async function handleChecklistLesson(
         updatedChecklist,
         context,
       );
-      return llmResponse.message + "\n\n" + clarifyResponse;
+      // Return only the final message (previous ones already saved to conversation)
+      return clarifyResponse;
 
     case "none":
     default:

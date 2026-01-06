@@ -246,11 +246,11 @@ CATCH-UP:
 
 RESET:
   reset_progress → {"type":"reset_progress","scope":"all"|"vocabulary"|"lessons"|"current_lesson","confirmed":boolean}
-    "reset all progress", "start fresh", "clear my progress" → scope: "all", confirmed: false
-    "reset vocabulary", "clear vocab progress" → scope: "vocabulary", confirmed: false
-    "reset lessons", "clear lesson history" → scope: "lessons", confirmed: false
-    "reset current lesson", "restart from scratch" → scope: "current_lesson", confirmed: false
-    "yes, reset everything", "yes reset all" → scope: "all", confirmed: true
+    "/reset", "/reset all", "reset all progress", "start fresh", "clear my progress" → scope: "all", confirmed: false
+    "/reset vocabulary", "reset vocabulary", "clear vocab progress" → scope: "vocabulary", confirmed: false
+    "/reset lessons", "reset lessons", "clear lesson history" → scope: "lessons", confirmed: false
+    "/reset current", "reset current lesson", "restart from scratch" → scope: "current_lesson", confirmed: false
+    "yes, reset everything", "yes reset all", "yes" (after reset prompt) → scope: "all", confirmed: true
     "yes, reset vocabulary" → scope: "vocabulary", confirmed: true
     "yes, reset lessons" → scope: "lessons", confirmed: true
 

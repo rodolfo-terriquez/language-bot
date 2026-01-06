@@ -348,6 +348,7 @@ function shouldExitLessonFlow(intent: Intent): boolean {
     "show_lesson_history",
     "set_lesson_time",
     "show_missed_lessons",
+    "reset_progress",
   ];
 
   // Direct exit intents

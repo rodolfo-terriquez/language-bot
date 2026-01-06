@@ -87,10 +87,7 @@ function getDayOfWeek(): string {
 // User Profile Operations
 // ==========================================
 
-export async function createUserProfile(
-  chatId: number,
-  displayName: string,
-): Promise<UserProfile> {
+export async function createUserProfile(chatId: number, displayName: string): Promise<UserProfile> {
   const redis = getClient();
   const now = Date.now();
 
@@ -144,7 +141,9 @@ export async function tryMarkMessageProcessed(
   return result === "OK";
 }
 
-export async function getLastAssistantMessage(chatId: number): Promise<{ text: string; timestamp: number } | null> {
+export async function getLastAssistantMessage(
+  chatId: number,
+): Promise<{ text: string; timestamp: number } | null> {
   const redis = getClient();
   const raw = await redis.get<string>(LAST_ASSISTANT_MSG_KEY(chatId));
   if (!raw) return null;
@@ -157,7 +156,11 @@ export async function getLastAssistantMessage(chatId: number): Promise<{ text: s
   return null;
 }
 
-export async function setLastAssistantMessage(chatId: number, text: string, ttlSeconds = 600): Promise<void> {
+export async function setLastAssistantMessage(
+  chatId: number,
+  text: string,
+  ttlSeconds = 600,
+): Promise<void> {
   const redis = getClient();
   const payload = JSON.stringify({ text, timestamp: Date.now() });
   await (redis as any).set(LAST_ASSISTANT_MSG_KEY(chatId), payload, { ex: ttlSeconds });
@@ -270,10 +273,7 @@ export async function updateLessonProgress(progress: LessonProgress): Promise<vo
   );
 }
 
-export async function startLesson(
-  chatId: number,
-  dayNumber: number,
-): Promise<LessonProgress> {
+export async function startLesson(chatId: number, dayNumber: number): Promise<LessonProgress> {
   let progress = await getLessonProgress(chatId, dayNumber);
 
   if (!progress) {
@@ -401,7 +401,9 @@ export async function getActiveLessonState(chatId: number): Promise<ActiveLesson
 export async function updateActiveLessonState(state: ActiveLessonState): Promise<void> {
   const redis = getClient();
   state.lastInteraction = Date.now();
-  await redis.set(ACTIVE_LESSON_KEY(state.chatId), JSON.stringify(state), { ex: ACTIVE_LESSON_TTL });
+  await redis.set(ACTIVE_LESSON_KEY(state.chatId), JSON.stringify(state), {
+    ex: ACTIVE_LESSON_TTL,
+  });
 }
 
 export async function clearActiveLessonState(chatId: number): Promise<void> {
@@ -663,7 +665,7 @@ export async function getReviewCandidates(
     const errorRatio = total > 0 ? item.incorrectCount / total : 0;
 
     // Priority formula: higher = more urgent review needed
-    return (masteryFactor * 2) + (daysSinceLastSeen * 0.5) + (errorRatio * 3);
+    return masteryFactor * 2 + daysSinceLastSeen * 0.5 + errorRatio * 3;
   };
 
   // Process all categories
@@ -678,9 +680,7 @@ export async function getReviewCandidates(
 
       // Include if: low mastery OR hasn't been seen recently
       const daysSinceLastSeen = (now - item.lastSeen) / (1000 * 60 * 60 * 24);
-      const needsReview =
-        item.masteryLevel < 3 ||
-        (item.masteryLevel < 5 && daysSinceLastSeen > 2);
+      const needsReview = item.masteryLevel < 3 || (item.masteryLevel < 5 && daysSinceLastSeen > 2);
 
       if (needsReview) {
         candidates.push({
@@ -756,7 +756,10 @@ export async function addToConversation(
   const messagePairs = messages.length / 2;
 
   if (messagePairs >= MAX_CONVERSATION_PAIRS && summarizationCallback) {
-    const messagesToSummarize = messages.slice(0, (MAX_CONVERSATION_PAIRS - RECENT_PAIRS_TO_KEEP) * 2);
+    const messagesToSummarize = messages.slice(
+      0,
+      (MAX_CONVERSATION_PAIRS - RECENT_PAIRS_TO_KEEP) * 2,
+    );
     const recentMessages = messages.slice(-(RECENT_PAIRS_TO_KEEP * 2));
 
     const tempData: ConversationData = {
@@ -816,16 +819,11 @@ export async function getActiveChats(): Promise<number[]> {
 
 const SYLLABUS_TTL = 7 * 24 * 60 * 60; // 7 days
 
-export async function cacheSyllabusDay(
-  level: string,
-  day: SyllabusDay,
-): Promise<void> {
+export async function cacheSyllabusDay(level: string, day: SyllabusDay): Promise<void> {
   const redis = getClient();
-  await redis.set(
-    SYLLABUS_DAY_KEY(level, day.dayNumber),
-    JSON.stringify(day),
-    { ex: SYLLABUS_TTL },
-  );
+  await redis.set(SYLLABUS_DAY_KEY(level, day.dayNumber), JSON.stringify(day), {
+    ex: SYLLABUS_TTL,
+  });
 }
 
 export async function getCachedSyllabusDay(
@@ -891,5 +889,330 @@ export async function getLessonContext(chatId: number): Promise<LessonContext | 
     masteredCounts,
     recentConversation: conversationData.messages.slice(-10), // Last 5 exchanges
     conversationSummary: conversationData.summary,
+  };
+}
+
+// ==========================================
+// Flexible Lesson State (Tae Kim Curriculum)
+// ==========================================
+
+import type {
+  FlexibleLessonState,
+  TaeKimLessonContent,
+  TaeKimProgress,
+  VocabProgress,
+  VocabProgressMap,
+} from "./types.js";
+
+// Key patterns for flexible lesson system
+const FLEXIBLE_LESSON_KEY = (chatId: number) => `${getKeyPrefix()}flex_lesson:${chatId}`;
+const TAEKIM_PROGRESS_KEY = (chatId: number) => `${getKeyPrefix()}taekim_progress:${chatId}`;
+const TAEKIM_CONTENT_CACHE_KEY = (lessonNumber: number) =>
+  `${getKeyPrefix()}taekim_content:${lessonNumber}`;
+
+const FLEXIBLE_LESSON_TTL = 24 * 60 * 60; // 24 hours
+const CONTENT_CACHE_TTL = 7 * 24 * 60 * 60; // 7 days
+
+/**
+ * Get flexible lesson state
+ */
+export async function getFlexibleLessonState(chatId: number): Promise<FlexibleLessonState | null> {
+  const redis = getClient();
+  const data = await redis.get<string>(FLEXIBLE_LESSON_KEY(chatId));
+  if (!data) return null;
+  return typeof data === "string" ? JSON.parse(data) : data;
+}
+
+/**
+ * Save flexible lesson state
+ */
+export async function saveFlexibleLessonState(state: FlexibleLessonState): Promise<void> {
+  const redis = getClient();
+  state.lastInteraction = Date.now();
+  await redis.set(FLEXIBLE_LESSON_KEY(state.chatId), JSON.stringify(state), {
+    ex: FLEXIBLE_LESSON_TTL,
+  });
+}
+
+/**
+ * Clear flexible lesson state
+ */
+export async function clearFlexibleLessonState(chatId: number): Promise<void> {
+  const redis = getClient();
+  await redis.del(FLEXIBLE_LESSON_KEY(chatId));
+}
+
+/**
+ * Get Tae Kim progress for a user
+ */
+export async function getTaeKimProgress(chatId: number): Promise<TaeKimProgress> {
+  const redis = getClient();
+  const data = await redis.get<string>(TAEKIM_PROGRESS_KEY(chatId));
+
+  if (!data) {
+    // Return default progress
+    return {
+      chatId,
+      completedLessons: [],
+      currentLesson: 1,
+      lessonScores: {},
+      totalTimeSpent: 0,
+    };
+  }
+
+  return typeof data === "string" ? JSON.parse(data) : data;
+}
+
+/**
+ * Save Tae Kim progress
+ */
+export async function saveTaeKimProgress(progress: TaeKimProgress): Promise<void> {
+  const redis = getClient();
+  await redis.set(TAEKIM_PROGRESS_KEY(progress.chatId), JSON.stringify(progress));
+}
+
+/**
+ * Mark a Tae Kim lesson as complete
+ */
+export async function markTaeKimLessonComplete(
+  chatId: number,
+  lessonNumber: number,
+  score: number,
+  timeSpentMinutes: number,
+): Promise<TaeKimProgress> {
+  const progress = await getTaeKimProgress(chatId);
+
+  // Add to completed if not already
+  if (!progress.completedLessons.includes(lessonNumber)) {
+    progress.completedLessons.push(lessonNumber);
+    progress.completedLessons.sort((a, b) => a - b);
+  }
+
+  // Update score (keep best score)
+  const existingScore = progress.lessonScores[lessonNumber] || 0;
+  progress.lessonScores[lessonNumber] = Math.max(existingScore, score);
+
+  // Update current lesson to next uncompleted
+  const maxCompleted = Math.max(...progress.completedLessons, 0);
+  progress.currentLesson = maxCompleted + 1;
+
+  // Update time spent
+  progress.totalTimeSpent += timeSpentMinutes;
+  progress.lastCompletedAt = Date.now();
+
+  await saveTaeKimProgress(progress);
+
+  // Also update user streak
+  await updateStreak(chatId);
+
+  return progress;
+}
+
+/**
+ * Get the next recommended Tae Kim lesson for a user
+ */
+export async function getNextTaeKimLesson(chatId: number): Promise<number> {
+  const progress = await getTaeKimProgress(chatId);
+  return progress.currentLesson;
+}
+
+/**
+ * Check if a user has completed a specific Tae Kim lesson
+ */
+export async function hasTaeKimLessonCompleted(
+  chatId: number,
+  lessonNumber: number,
+): Promise<boolean> {
+  const progress = await getTaeKimProgress(chatId);
+  return progress.completedLessons.includes(lessonNumber);
+}
+
+/**
+ * Cache generated lesson content
+ */
+export async function cacheTaeKimContent(
+  lessonNumber: number,
+  content: TaeKimLessonContent,
+): Promise<void> {
+  const redis = getClient();
+  await redis.set(TAEKIM_CONTENT_CACHE_KEY(lessonNumber), JSON.stringify(content), {
+    ex: CONTENT_CACHE_TTL,
+  });
+}
+
+/**
+ * Get cached lesson content
+ */
+export async function getCachedTaeKimContent(
+  lessonNumber: number,
+): Promise<TaeKimLessonContent | null> {
+  const redis = getClient();
+  const data = await redis.get<string>(TAEKIM_CONTENT_CACHE_KEY(lessonNumber));
+  if (!data) return null;
+  return typeof data === "string" ? JSON.parse(data) : data;
+}
+
+/**
+ * Get comprehensive Tae Kim lesson context
+ */
+export interface TaeKimLessonContext {
+  userProfile: UserProfile;
+  taeKimProgress: TaeKimProgress;
+  flexibleLessonState: FlexibleLessonState | null;
+  recentConversation: ConversationMessage[];
+  conversationSummary?: string;
+}
+
+export async function getTaeKimLessonContext(chatId: number): Promise<TaeKimLessonContext | null> {
+  const profile = await getUserProfile(chatId);
+  if (!profile) return null;
+
+  const [taeKimProgress, flexibleLessonState, conversationData] = await Promise.all([
+    getTaeKimProgress(chatId),
+    getFlexibleLessonState(chatId),
+    getConversationData(chatId),
+  ]);
+
+  return {
+    userProfile: profile,
+    taeKimProgress,
+    flexibleLessonState,
+    recentConversation: conversationData.messages.slice(-10),
+    conversationSummary: conversationData.summary,
+  };
+}
+
+// ==========================================
+// Core Vocabulary Progress Tracking
+// ==========================================
+
+const VOCAB_PROGRESS_KEY = (chatId: number) => `${getKeyPrefix()}vocab_progress:${chatId}`;
+
+/**
+ * Get vocabulary progress for a user
+ */
+export async function getVocabProgress(chatId: number): Promise<VocabProgressMap> {
+  const redis = getClient();
+  const data = await redis.get<string>(VOCAB_PROGRESS_KEY(chatId));
+
+  if (!data) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(data) as VocabProgressMap;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Save vocabulary progress for a user
+ */
+export async function saveVocabProgress(chatId: number, progress: VocabProgressMap): Promise<void> {
+  const redis = getClient();
+  await redis.set(VOCAB_PROGRESS_KEY(chatId), JSON.stringify(progress));
+}
+
+/**
+ * Update vocabulary when seen in a lesson
+ */
+export async function updateVocabSeen(chatId: number, word: string): Promise<void> {
+  const progress = await getVocabProgress(chatId);
+  const now = Date.now();
+
+  if (!progress[word]) {
+    progress[word] = {
+      word,
+      timesSeen: 1,
+      timesCorrect: 0,
+      lastSeen: now,
+      status: "learning",
+    };
+  } else {
+    progress[word].timesSeen++;
+    progress[word].lastSeen = now;
+    // Auto-promote to "learning" if was "new"
+    if (progress[word].status === "new") {
+      progress[word].status = "learning";
+    }
+  }
+
+  await saveVocabProgress(chatId, progress);
+}
+
+/**
+ * Update vocabulary when correctly recalled
+ */
+export async function updateVocabCorrect(chatId: number, word: string): Promise<void> {
+  const progress = await getVocabProgress(chatId);
+  const now = Date.now();
+
+  if (!progress[word]) {
+    progress[word] = {
+      word,
+      timesSeen: 1,
+      timesCorrect: 1,
+      lastSeen: now,
+      status: "learning",
+    };
+  } else {
+    progress[word].timesCorrect++;
+    progress[word].lastSeen = now;
+
+    // Auto-promote to "known" after 5 correct recalls
+    if (progress[word].timesCorrect >= 5 && progress[word].status === "learning") {
+      progress[word].status = "known";
+    }
+  }
+
+  await saveVocabProgress(chatId, progress);
+}
+
+/**
+ * Set vocabulary status directly
+ */
+export async function setVocabStatus(
+  chatId: number,
+  word: string,
+  status: VocabProgress["status"],
+): Promise<void> {
+  const progress = await getVocabProgress(chatId);
+  const now = Date.now();
+
+  if (!progress[word]) {
+    progress[word] = {
+      word,
+      timesSeen: 0,
+      timesCorrect: 0,
+      lastSeen: now,
+      status,
+    };
+  } else {
+    progress[word].status = status;
+  }
+
+  await saveVocabProgress(chatId, progress);
+}
+
+/**
+ * Get vocabulary stats for a user
+ */
+export async function getVocabStats(chatId: number): Promise<{
+  total: number;
+  new: number;
+  learning: number;
+  known: number;
+  ignored: number;
+}> {
+  const progress = await getVocabProgress(chatId);
+  const words = Object.values(progress);
+
+  return {
+    total: words.length,
+    new: words.filter((w) => w.status === "new").length,
+    learning: words.filter((w) => w.status === "learning").length,
+    known: words.filter((w) => w.status === "known").length,
+    ignored: words.filter((w) => w.status === "ignored").length,
   };
 }

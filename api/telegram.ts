@@ -11,6 +11,9 @@ import type {
   PracticeTopicIntent,
   StartCatchUpIntent,
   LessonChecklist,
+  StartTaeKimLessonIntent,
+  ResumeTaeKimLessonIntent,
+  FlexibleLessonState,
 } from "../lib/types.js";
 import * as telegram from "../lib/telegram.js";
 import { transcribeAudio } from "../lib/whisper.js";
@@ -27,10 +30,7 @@ import {
 import * as redis from "../lib/redis.js";
 import * as lessonEngine from "../lib/lesson-engine.js";
 import * as syllabus from "../lib/syllabus.js";
-import {
-  scheduleDailyLesson,
-  deleteSchedule,
-} from "../lib/qstash.js";
+import { scheduleDailyLesson, deleteSchedule } from "../lib/qstash.js";
 import {
   generateChecklist,
   advanceChecklist,
@@ -48,10 +48,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse,
-): Promise<void> {
+export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
     return;
@@ -79,7 +76,10 @@ export default async function handler(
         return;
       }
     } catch (e) {
-      console.warn(`[${chatId}] Could not set idempotency key for message ${message.message_id}:`, e);
+      console.warn(
+        `[${chatId}] Could not set idempotency key for message ${message.message_id}:`,
+        e,
+      );
     }
 
     // Check if user is allowed
@@ -143,20 +143,26 @@ export default async function handler(
 
     // Handle /restart command
     if (userText.trim().toLowerCase() === "/restart") {
-      const response = await handleRestartLesson(chatId, { type: "restart_lesson" }, {
-        messages: (await redis.getConversationData(chatId)).messages,
-        summary: (await redis.getConversationData(chatId)).summary,
-      });
+      const response = await handleRestartLesson(
+        chatId,
+        { type: "restart_lesson" },
+        {
+          messages: (await redis.getConversationData(chatId)).messages,
+          summary: (await redis.getConversationData(chatId)).summary,
+        },
+      );
       res.status(200).json({ ok: true });
       return;
     }
 
     // Get context
-    const [conversationData, activeLessonState, activeChecklist] = await Promise.all([
-      redis.getConversationData(chatId),
-      redis.getActiveLessonState(chatId),
-      redis.getLessonChecklist(chatId),
-    ]);
+    const [conversationData, activeLessonState, activeChecklist, flexibleLessonState] =
+      await Promise.all([
+        redis.getConversationData(chatId),
+        redis.getActiveLessonState(chatId),
+        redis.getLessonChecklist(chatId),
+        redis.getFlexibleLessonState(chatId),
+      ]);
 
     const context: ConversationContext = {
       messages: conversationData.messages,
@@ -171,9 +177,27 @@ export default async function handler(
     // Check if user wants to exit lesson flow (pause, chat, check progress, etc.)
     const wantsToExitLesson = shouldExitLessonFlow(intent);
 
+    // Flexible Tae Kim lesson flow (unless user wants to exit)
+    if (flexibleLessonState && !wantsToExitLesson) {
+      console.log(
+        `[${chatId}] Active Tae Kim lesson ${flexibleLessonState.lessonNumber}, component: ${flexibleLessonState.currentComponent}`,
+      );
+      const response = await handleFlexibleLesson(chatId, userText, flexibleLessonState, context);
+      if (response) {
+        await redis.addToConversation(chatId, userText, response, {
+          dayNumber: flexibleLessonState.lessonNumber,
+          phase: "vocabulary_teaching", // Legacy compatibility
+        });
+      }
+      res.status(200).json({ ok: true });
+      return;
+    }
+
     // Checklist-based lesson flow (unless user wants to exit)
     if (activeChecklist && !wantsToExitLesson) {
-      console.log(`[${chatId}] Active checklist for Day ${activeChecklist.dayNumber}, item ${activeChecklist.currentIndex + 1}/${activeChecklist.totalCount}`);
+      console.log(
+        `[${chatId}] Active checklist for Day ${activeChecklist.dayNumber}, item ${activeChecklist.currentIndex + 1}/${activeChecklist.totalCount}`,
+      );
       const response = await handleChecklistLesson(chatId, userText, activeChecklist, context);
       if (response) {
         await redis.addToConversation(chatId, userText, response, {
@@ -234,6 +258,11 @@ async function handleIntent(
 ): Promise<string | null> {
   switch (intent.type) {
     case "start_lesson":
+      // Check if this should start a Tae Kim lesson instead
+      // For now, use environment variable to toggle between systems
+      if (process.env.USE_TAEKIM_CURRICULUM === "true") {
+        return handleStartTaeKimLesson(chatId, intent.dayNumber || null, null, context);
+      }
       return handleStartLesson(chatId, intent, context);
     case "restart_lesson":
       return handleRestartLesson(chatId, intent, context);
@@ -242,6 +271,10 @@ async function handleIntent(
     case "resume_lesson":
       return handleResumeLesson(chatId, context);
     case "show_progress":
+      // Show Tae Kim progress if using that curriculum
+      if (process.env.USE_TAEKIM_CURRICULUM === "true") {
+        return handleShowTaeKimProgress(chatId, context);
+      }
       return handleShowProgress(chatId, context);
     case "show_weak_areas":
       return handleShowWeakAreas(chatId, context);
@@ -261,6 +294,24 @@ async function handleIntent(
       return handleShowMissedLessons(chatId, context);
     case "start_catch_up":
       return handleStartCatchUp(chatId, intent, context);
+    case "start_taekim_lesson":
+      // Explicit Tae Kim lesson start
+      const tkIntent = intent as StartTaeKimLessonIntent;
+      return handleStartTaeKimLesson(
+        chatId,
+        tkIntent.lessonNumber || null,
+        tkIntent.topicName || null,
+        context,
+      );
+    case "resume_taekim_lesson":
+      // Resume existing Tae Kim lesson
+      const existingState = await redis.getFlexibleLessonState(chatId);
+      if (existingState) {
+        return handleFlexibleLesson(chatId, "[RESUME]", existingState, context);
+      }
+      const noLessonResponse = "No active lesson to resume. Say 'start lesson' to begin!";
+      await telegram.sendMessage(chatId, noLessonResponse);
+      return noLessonResponse;
     case "conversation":
       const response = await generateActionResponse(
         { type: "conversation", message: intent.message },
@@ -306,12 +357,22 @@ function shouldExitLessonFlow(intent: Intent): boolean {
     const msg = intent.message.toLowerCase();
     // Common phrases that indicate wanting to chat, not answer
     const chatPhrases = [
-      "let's chat", "let's talk", "just chat", "free talk",
-      "stop lesson", "end lesson", "quit lesson", "exit lesson",
-      "take a break", "i'm done", "i'm tired", "enough for today",
-      "can we just talk", "i want to chat",
+      "let's chat",
+      "let's talk",
+      "just chat",
+      "free talk",
+      "stop lesson",
+      "end lesson",
+      "quit lesson",
+      "exit lesson",
+      "take a break",
+      "i'm done",
+      "i'm tired",
+      "enough for today",
+      "can we just talk",
+      "i want to chat",
     ];
-    if (chatPhrases.some(phrase => msg.includes(phrase))) {
+    if (chatPhrases.some((phrase) => msg.includes(phrase))) {
       return true;
     }
   }
@@ -355,16 +416,19 @@ async function handleChecklistLesson(
     checklist,
     context.messages,
     userText,
-    itemContent ? {
-      vocabularyItem: itemContent.vocabularyItem,
-      grammarPattern: itemContent.grammarPattern,
-      kanjiItem: itemContent.kanjiItem,
-    } : undefined,
+    itemContent
+      ? {
+          vocabularyItem: itemContent.vocabularyItem,
+          grammarPattern: itemContent.grammarPattern,
+          kanjiItem: itemContent.kanjiItem,
+        }
+      : undefined,
   );
 
   // Guard against auto-advancing due to system placeholders or empty input
   const placeholder = userText && userText.trim();
-  const isAutoContinue = placeholder === "[AUTO_CONTINUE]" || placeholder?.toLowerCase() === "continue" || !placeholder;
+  const isAutoContinue =
+    placeholder === "[AUTO_CONTINUE]" || placeholder?.toLowerCase() === "continue" || !placeholder;
   if (isAutoContinue && llmResponse.checklistAction === "complete") {
     llmResponse.checklistAction = "none";
   }
@@ -422,10 +486,7 @@ async function handleChecklistLesson(
     case "insert":
       // Insert clarification item
       if (llmResponse.insertItem?.content) {
-        updatedChecklist = insertClarification(
-          updatedChecklist,
-          llmResponse.insertItem.content,
-        );
+        updatedChecklist = insertClarification(updatedChecklist, llmResponse.insertItem.content);
       }
       // After inserting, auto-continue to present the clarification
       await redis.saveLessonChecklist(updatedChecklist);
@@ -488,9 +549,18 @@ async function handleTeachingResponse(
 
   // Check for simple acknowledgments first
   const normalizedInput = userText.toLowerCase().trim();
-  const isAcknowledgment = ["ok", "okay", "got it", "yes", "hai", "はい", "next", "continue", "understood", "うん"].some(
-    ack => normalizedInput === ack || normalizedInput === ack + "."
-  );
+  const isAcknowledgment = [
+    "ok",
+    "okay",
+    "got it",
+    "yes",
+    "hai",
+    "はい",
+    "next",
+    "continue",
+    "understood",
+    "うん",
+  ].some((ack) => normalizedInput === ack || normalizedInput === ack + ".");
 
   if (isAcknowledgment) {
     // Just acknowledging, move on to next item
@@ -541,7 +611,12 @@ async function handleStartLesson(
 
     // Send the first teaching prompt to resume
     await sleep(AUTO_CONTINUE_DEBOUNCE_MS);
-    const resumeResponse = await handleChecklistLesson(chatId, "[AUTO_CONTINUE]", existingChecklist, context);
+    const resumeResponse = await handleChecklistLesson(
+      chatId,
+      "[AUTO_CONTINUE]",
+      existingChecklist,
+      context,
+    );
     return response + "\n\n" + resumeResponse;
   }
 
@@ -616,10 +691,7 @@ async function handleRestartLesson(
   const dayNumber = intent.dayNumber || existingChecklist?.dayNumber || profile.currentDay;
 
   // Clear existing checklist and legacy state
-  await Promise.all([
-    redis.clearLessonChecklist(chatId),
-    redis.clearActiveLessonState(chatId),
-  ]);
+  await Promise.all([redis.clearLessonChecklist(chatId), redis.clearActiveLessonState(chatId)]);
 
   // Load syllabus to verify day exists
   const dayContent = await syllabus.getSyllabusDay(dayNumber);
@@ -666,10 +738,7 @@ async function handleRestartLesson(
   return restartMsg + "\n\n" + introResponse + "\n\n" + firstItemResponse.message;
 }
 
-async function handlePauseLesson(
-  chatId: number,
-  context: ConversationContext,
-): Promise<string> {
+async function handlePauseLesson(chatId: number, context: ConversationContext): Promise<string> {
   // Check for checklist-based lesson first, then legacy state
   const activeChecklist = await redis.getLessonChecklist(chatId);
   const activeState = await redis.getActiveLessonState(chatId);
@@ -709,10 +778,7 @@ async function handlePauseLesson(
   return response;
 }
 
-async function handleResumeLesson(
-  chatId: number,
-  context: ConversationContext,
-): Promise<string> {
+async function handleResumeLesson(chatId: number, context: ConversationContext): Promise<string> {
   // Check for checklist-based lesson first, then legacy state
   const activeChecklist = await redis.getLessonChecklist(chatId);
   const activeState = await redis.getActiveLessonState(chatId);
@@ -749,7 +815,12 @@ async function handleResumeLesson(
   // Continue the lesson - for checklist lessons, the next message will be handled by handleChecklistLesson
   if (activeChecklist) {
     // Generate the next teaching prompt
-    const resumeResponse = await handleChecklistLesson(chatId, "[AUTO_CONTINUE]", activeChecklist, context);
+    const resumeResponse = await handleChecklistLesson(
+      chatId,
+      "[AUTO_CONTINUE]",
+      activeChecklist,
+      context,
+    );
     return response + "\n\n" + resumeResponse;
   } else {
     // Legacy flow
@@ -762,10 +833,7 @@ async function handleResumeLesson(
 // Lesson Flow Helpers
 // ==========================================
 
-async function continueLesson(
-  chatId: number,
-  context: ConversationContext,
-): Promise<string> {
+async function continueLesson(chatId: number, context: ConversationContext): Promise<string> {
   const state = await redis.getActiveLessonState(chatId);
   if (!state) {
     return "No active lesson.";
@@ -809,10 +877,7 @@ async function continueLesson(
   }
 }
 
-async function advanceLessonPhase(
-  chatId: number,
-  context: ConversationContext,
-): Promise<string> {
+async function advanceLessonPhase(chatId: number, context: ConversationContext): Promise<string> {
   const state = await redis.getActiveLessonState(chatId);
   if (!state) return "No active lesson.";
 
@@ -826,10 +891,7 @@ async function advanceLessonPhase(
   return continueLesson(chatId, context);
 }
 
-async function showNextTeachingItem(
-  chatId: number,
-  context: ConversationContext,
-): Promise<string> {
+async function showNextTeachingItem(chatId: number, context: ConversationContext): Promise<string> {
   const result = await lessonEngine.getCurrentTeachingItem(chatId);
 
   if (result.data?.vocabularyItem) {
@@ -884,10 +946,7 @@ async function showNextTeachingItem(
   return continueLesson(chatId, context);
 }
 
-async function showNextExercise(
-  chatId: number,
-  context: ConversationContext,
-): Promise<string> {
+async function showNextExercise(chatId: number, context: ConversationContext): Promise<string> {
   const result = await lessonEngine.generateExercise(chatId);
 
   if (result.phase === "complete") {
@@ -937,10 +996,7 @@ async function showNextExercise(
 // Progress Intent Handlers
 // ==========================================
 
-async function handleShowProgress(
-  chatId: number,
-  context: ConversationContext,
-): Promise<string> {
+async function handleShowProgress(chatId: number, context: ConversationContext): Promise<string> {
   const profile = await redis.getUserProfile(chatId);
   if (!profile) {
     const response = "I couldn't find your profile.";
@@ -965,10 +1021,7 @@ async function handleShowProgress(
   return response;
 }
 
-async function handleShowWeakAreas(
-  chatId: number,
-  context: ConversationContext,
-): Promise<string> {
+async function handleShowWeakAreas(chatId: number, context: ConversationContext): Promise<string> {
   const weakAreas = await redis.getWeakAreas(chatId);
 
   if (weakAreas.length === 0) {
@@ -986,10 +1039,7 @@ async function handleShowWeakAreas(
     errorCount: w.reviewCount,
   }));
 
-  const response = await generateActionResponse(
-    { type: "weak_areas", areas },
-    context,
-  );
+  const response = await generateActionResponse({ type: "weak_areas", areas }, context);
   await telegram.sendMessage(chatId, response);
   return response;
 }
@@ -1015,7 +1065,10 @@ async function handleShowLessonHistory(
 
   if (completedLessons.length === 0) {
     const response = await generateActionResponse(
-      { type: "conversation", message: "You haven't completed any lessons yet. Say 'start lesson' to begin!" },
+      {
+        type: "conversation",
+        message: "You haven't completed any lessons yet. Say 'start lesson' to begin!",
+      },
       context,
     );
     await telegram.sendMessage(chatId, response);
@@ -1146,11 +1199,7 @@ async function handleStartCatchUp(
   intent: StartCatchUpIntent,
   context: ConversationContext,
 ): Promise<string> {
-  return handleStartLesson(
-    chatId,
-    { type: "start_lesson", dayNumber: intent.dayNumber },
-    context,
-  );
+  return handleStartLesson(chatId, { type: "start_lesson", dayNumber: intent.dayNumber }, context);
 }
 
 // ==========================================
@@ -1216,4 +1265,241 @@ async function setupDefaultSchedules(chatId: number): Promise<void> {
   } catch (error) {
     console.error(`Failed to set up schedule for ${chatId}:`, error);
   }
+}
+
+// ==========================================
+// Flexible Tae Kim Lesson System
+// ==========================================
+
+import {
+  generateFlexibleLessonResponse,
+  generateTaeKimLessonIntro,
+  generateTaeKimLessonComplete,
+  isComponentComplete,
+  parseFlexibleResponse,
+} from "../lib/llm.js";
+import {
+  createFlexibleLessonState,
+  updateLessonProgress,
+  advanceComponent,
+  isLessonComplete as isFlexibleLessonComplete,
+  calculateLessonScore,
+  getProgressSummary,
+  buildComponentContext,
+} from "../lib/lesson-flow.js";
+import { getLesson, getLessonByTopicName, getTotalLessons } from "../lib/curriculum.js";
+import { generateFullLessonContent, generateDynamicContent } from "../lib/lesson-generator.js";
+import type { TaeKimLessonContent } from "../lib/types.js";
+
+/**
+ * Check if user has an active flexible (Tae Kim) lesson
+ */
+async function hasFlexibleLesson(chatId: number): Promise<boolean> {
+  const state = await redis.getFlexibleLessonState(chatId);
+  return state !== null;
+}
+
+/**
+ * Handle messages during a flexible Tae Kim lesson
+ */
+async function handleFlexibleLesson(
+  chatId: number,
+  userText: string,
+  state: FlexibleLessonState,
+  context: ConversationContext,
+): Promise<string> {
+  // Load lesson content
+  let lessonContent = await redis.getCachedTaeKimContent(state.lessonNumber);
+
+  if (!lessonContent) {
+    // Generate content if not cached (pass chatId for user-specific vocabulary)
+    await telegram.sendMessage(chatId, "Loading lesson content...");
+    lessonContent = await generateFullLessonContent(state.lessonNumber, chatId);
+
+    if (!lessonContent) {
+      const response = "Could not load lesson content. Please try again.";
+      await telegram.sendMessage(chatId, response);
+      return response;
+    }
+
+    // Cache for future use
+    await redis.cacheTaeKimContent(state.lessonNumber, lessonContent);
+
+    // Update state with generated content
+    state.generatedContent = {
+      readingPassage: lessonContent.readingPassage,
+      dialoguePractice: lessonContent.dialoguePractice,
+      exercises: lessonContent.practiceExercises,
+      writingExercise: lessonContent.writingExercise,
+    };
+    await redis.saveFlexibleLessonState(state);
+  }
+
+  // Build component context
+  const componentContext = buildComponentContext(state.currentComponent, lessonContent, state);
+
+  // Generate LLM response
+  const llmResponse = await generateFlexibleLessonResponse(
+    userText,
+    state,
+    lessonContent,
+    componentContext,
+    context,
+  );
+
+  // Update state based on response
+  const updatedState = updateLessonProgress(state, llmResponse.component, llmResponse.progress);
+
+  // Check if lesson is complete
+  if (isFlexibleLessonComplete(updatedState)) {
+    // Save final state
+    await redis.saveFlexibleLessonState(updatedState);
+
+    // Send teaching response
+    await telegram.sendMessage(chatId, llmResponse.message);
+
+    // Generate and send completion message
+    const score = calculateLessonScore(updatedState);
+    const completionMsg = await generateTaeKimLessonComplete(lessonContent, score, context);
+    await telegram.sendMessage(chatId, completionMsg);
+
+    // Calculate time spent
+    const timeSpent = Math.round((Date.now() - updatedState.startedAt) / 60000);
+
+    // Mark lesson complete in progress tracking
+    await redis.markTaeKimLessonComplete(
+      chatId,
+      state.lessonNumber,
+      calculateLessonScore(updatedState),
+      timeSpent,
+    );
+
+    // Clear lesson state
+    await redis.clearFlexibleLessonState(chatId);
+
+    return llmResponse.message + "\n\n" + completionMsg;
+  }
+
+  // Save updated state
+  await redis.saveFlexibleLessonState(updatedState);
+
+  // Send response
+  await telegram.sendMessage(chatId, llmResponse.message);
+
+  return llmResponse.message;
+}
+
+/**
+ * Start a new Tae Kim lesson
+ */
+async function handleStartTaeKimLesson(
+  chatId: number,
+  lessonNumber: number | null,
+  topicName: string | null,
+  context: ConversationContext,
+): Promise<string> {
+  const profile = await redis.getUserProfile(chatId);
+  if (!profile) {
+    const response = "I couldn't find your profile. Please try again.";
+    await telegram.sendMessage(chatId, response);
+    return response;
+  }
+
+  // Check for existing flexible lesson
+  const existingState = await redis.getFlexibleLessonState(chatId);
+  if (existingState) {
+    const response = `You're already in Lesson ${existingState.lessonNumber}: ${existingState.topic}. Say "continue" to resume or "restart" to start over.`;
+    await telegram.sendMessage(chatId, response);
+    return response;
+  }
+
+  // Determine which lesson to start
+  let lesson;
+  if (lessonNumber) {
+    lesson = getLesson(lessonNumber);
+  } else if (topicName) {
+    lesson = getLessonByTopicName(topicName);
+  } else {
+    // Get next recommended lesson
+    const nextLessonNum = await redis.getNextTaeKimLesson(chatId);
+    lesson = getLesson(nextLessonNum);
+  }
+
+  if (!lesson) {
+    const total = getTotalLessons();
+    const response = `Lesson not found. We have ${total} lessons available (1-${total}).`;
+    await telegram.sendMessage(chatId, response);
+    return response;
+  }
+
+  // Show loading message for content generation
+  await telegram.sendMessage(chatId, `Starting Lesson ${lesson.lessonNumber}: ${lesson.topic}...`);
+
+  // Generate or load lesson content
+  let lessonContent = await redis.getCachedTaeKimContent(lesson.lessonNumber);
+
+  if (!lessonContent) {
+    await telegram.sendMessage(chatId, "Generating lesson content (this may take a moment)...");
+    lessonContent = await generateFullLessonContent(lesson.lessonNumber, chatId);
+
+    if (!lessonContent) {
+      const response = "Could not generate lesson content. Please try again.";
+      await telegram.sendMessage(chatId, response);
+      return response;
+    }
+
+    // Cache for future use
+    await redis.cacheTaeKimContent(lesson.lessonNumber, lessonContent);
+  }
+
+  // Create initial lesson state
+  const state = createFlexibleLessonState(
+    chatId,
+    lessonContent.lessonNumber,
+    lessonContent.topicId,
+    lessonContent.topic,
+  );
+  await redis.saveFlexibleLessonState(state);
+
+  // Generate intro message
+  const introResponse = await generateTaeKimLessonIntro(lessonContent, context);
+  await telegram.sendMessage(chatId, introResponse);
+
+  // Start the first component
+  await sleep(AUTO_CONTINUE_DEBOUNCE_MS);
+  const firstResponse = await handleFlexibleLesson(chatId, "[START]", state, context);
+
+  return introResponse + "\n\n" + firstResponse;
+}
+
+/**
+ * Show Tae Kim progress summary
+ */
+async function handleShowTaeKimProgress(
+  chatId: number,
+  context: ConversationContext,
+): Promise<string> {
+  const progress = await redis.getTaeKimProgress(chatId);
+  const total = getTotalLessons();
+
+  const completed = progress.completedLessons.length;
+  const percentage = Math.round((completed / total) * 100);
+
+  let message = `**Tae Kim's Grammar Guide Progress**\n\n`;
+  message += `Lessons completed: ${completed}/${total} (${percentage}%)\n`;
+  message += `Current lesson: ${progress.currentLesson}\n`;
+  message += `Total study time: ${progress.totalTimeSpent} minutes\n\n`;
+
+  if (progress.completedLessons.length > 0) {
+    const recentLessons = progress.completedLessons.slice(-5);
+    message += `Recent lessons:\n`;
+    for (const lessonNum of recentLessons) {
+      const lesson = getLesson(lessonNum);
+      const score = progress.lessonScores[lessonNum] || 0;
+      message += `- Lesson ${lessonNum}: ${lesson?.topic || "Unknown"} (${score}%)\n`;
+    }
+  }
+
+  await telegram.sendMessage(chatId, message);
+  return message;
 }

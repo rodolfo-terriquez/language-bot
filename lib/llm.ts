@@ -19,7 +19,9 @@ import { getSyllabusDay } from "./syllabus.js";
 const braintrustApiKey = process.env.BRAINTRUST_API_KEY;
 const braintrustProjectId = process.env.BRAINTRUST_PROJECT_ID;
 
-console.log(`[Braintrust] Initializing with project ID: ${braintrustProjectId}, API key set: ${!!braintrustApiKey}`);
+console.log(
+  `[Braintrust] Initializing with project ID: ${braintrustProjectId}, API key set: ${!!braintrustApiKey}`,
+);
 
 const logger = initLogger({
   projectId: braintrustProjectId,
@@ -126,9 +128,7 @@ ${taskPrompt}
 
 Generate your response to this task. Do NOT repeat or reference the task instructions - just respond naturally as Emi.`;
 
-  const messages: ChatCompletionMessageParam[] = [
-    { role: "system", content: fullSystemPrompt },
-  ];
+  const messages: ChatCompletionMessageParam[] = [{ role: "system", content: fullSystemPrompt }];
 
   // Add recent conversation history if available
   if (context?.messages && context.messages.length > 0) {
@@ -302,9 +302,7 @@ export async function parseIntent(
 
   const systemPrompt = getCurrentTimeContext() + INTENT_PARSING_PROMPT + lessonContext;
 
-  const messages: ChatCompletionMessageParam[] = [
-    { role: "system", content: systemPrompt },
-  ];
+  const messages: ChatCompletionMessageParam[] = [{ role: "system", content: systemPrompt }];
 
   // Only include last 10 messages for context
   const recentHistory = conversationHistory.slice(-10);
@@ -380,7 +378,7 @@ Meaning: ${actionContext.item.meaning}
 Part of speech: ${actionContext.item.partOfSpeech}
 ${actionContext.item.exampleSentence ? `Example: ${actionContext.item.exampleSentence}` : ""}
 
-${actionContext.index > 0 ? "Start with brief acknowledgment (e.g., \"Good!\", \"That's right!\") then present the new word." : ""}
+${actionContext.index > 0 ? 'Start with brief acknowledgment (e.g., "Good!", "That\'s right!") then present the new word.' : ""}
 Keep it SHORT (3-5 lines max). Present the word, its meaning, and one quick usage tip. End by asking them to try saying/typing it. Don't overwhelm with info.`;
       break;
 
@@ -457,7 +455,9 @@ Present this encouragingly. Highlight achievements.`;
       break;
 
     case "weak_areas":
-      const areasList = actionContext.areas.map((a) => `${a.item} (${a.type}) - ${a.errorCount} errors`).join("\n");
+      const areasList = actionContext.areas
+        .map((a) => `${a.item} (${a.type}) - ${a.errorCount} errors`)
+        .join("\n");
       prompt = `The student asked about weak areas. Here's what they're struggling with:\n${areasList}\n\nPresent this constructively, offer to practice these areas.`;
       break;
 
@@ -471,7 +471,12 @@ Present this encouragingly. Highlight achievements.`;
 
     case "lesson_time_set":
       const period = actionContext.hour >= 12 ? "PM" : "AM";
-      const displayHour = actionContext.hour > 12 ? actionContext.hour - 12 : actionContext.hour === 0 ? 12 : actionContext.hour;
+      const displayHour =
+        actionContext.hour > 12
+          ? actionContext.hour - 12
+          : actionContext.hour === 0
+            ? 12
+            : actionContext.hour;
       const timeStr = `${displayHour}:${actionContext.minute.toString().padStart(2, "0")} ${period}`;
       prompt = `The student set their daily lesson time to ${timeStr}. Confirm warmly.`;
       break;
@@ -534,15 +539,15 @@ Answer only: YES or NO`;
       model: getIntentModel(),
       max_tokens: 10,
       temperature: 0,
-      messages: [
-        { role: "user", content: prompt },
-      ],
+      messages: [{ role: "user", content: prompt }],
     });
 
     const content = response.choices[0]?.message?.content?.trim().toUpperCase() || "";
     const isCorrect = content.includes("YES");
 
-    console.log(`[evaluateTeachingAnswer] Expected: "${expectedItem}", Got: "${studentAnswer}", LLM: "${content}", Result: ${isCorrect}`);
+    console.log(
+      `[evaluateTeachingAnswer] Expected: "${expectedItem}", Got: "${studentAnswer}", LLM: "${content}", Result: ${isCorrect}`,
+    );
 
     return isCorrect;
   } catch (error) {
@@ -632,9 +637,10 @@ export async function generateDailyLessonPrompt(
 
   const dayLabel = title ? `Day ${dayNumber}: "${title}"` : `Day ${dayNumber}`;
 
-  const prompt = streak > 1
-    ? `Generate a daily lesson prompt for ${dayLabel}. The student has a ${streak}-day streak! Acknowledge their consistency and invite them to today's lesson.`
-    : `Generate a daily lesson prompt for ${dayLabel}. Warmly invite them to start today's lesson.`;
+  const prompt =
+    streak > 1
+      ? `Generate a daily lesson prompt for ${dayLabel}. The student has a ${streak}-day streak! Acknowledge their consistency and invite them to today's lesson.`
+      : `Generate a daily lesson prompt for ${dayLabel}. Warmly invite them to start today's lesson.`;
 
   const response = await client.chat.completions.create({
     model: getChatModel(),
@@ -870,9 +876,7 @@ ${LESSON_RESPONSE_INSTRUCTIONS}`;
   }
 
   // Build messages array
-  const messages: ChatCompletionMessageParam[] = [
-    { role: "system", content: systemPrompt },
-  ];
+  const messages: ChatCompletionMessageParam[] = [{ role: "system", content: systemPrompt }];
 
   // Add last 20 conversation messages
   const recentHistory = conversationHistory.slice(-20);
@@ -920,7 +924,9 @@ ${LESSON_RESPONSE_INSTRUCTIONS}`;
       parsed.checklistAction = "none";
     }
 
-    console.log(`[generateLessonResponse] Action: ${parsed.checklistAction}, Message length: ${parsed.message.length}`);
+    console.log(
+      `[generateLessonResponse] Action: ${parsed.checklistAction}, Message length: ${parsed.message.length}`,
+    );
     // De-duplicate any accidental repeated lines/blocks in the assistant message
     parsed.message = dedupeAssistantMessage(parsed.message);
     return parsed;
@@ -1020,6 +1026,228 @@ Celebrate their achievement! This is a moment for excitement. Mention what they 
   const content = response.choices[0]?.message?.content;
   if (!content) {
     return `Congratulations! You've completed Day ${checklist.dayNumber}! See you tomorrow!`;
+  }
+
+  return content;
+}
+
+// ==========================================
+// Tae Kim Flexible Lesson Functions
+// ==========================================
+
+import type {
+  FlexibleLessonState,
+  TaeKimLessonContent,
+  LessonComponent,
+  FlexibleLessonResponse,
+} from "./types.js";
+
+const EMI_PERSONALITY_TAEKIM = `You are Emi, a friendly Japanese tutor teaching via Telegram.
+
+## Teaching Style
+- Direct and practical - skip theory, jump to application
+- Challenge-focused - increase complexity if the student finds it easy
+- Real-world scenarios ONLY (convenience stores, train stations, cafes, online shopping, texting friends)
+- NO classroom scenarios
+- NO romaji - only Japanese with English translations
+
+## Sentence Format (CRITICAL)
+For EVERY Japanese sentence, use this exact triad format:
+昨日、友達と映画を見ました。
+きのう、ともだちとえいがをみました。
+Yesterday, I watched a movie with a friend.
+
+Keep the three lines together for each sentence.
+
+## Exercise Format
+For fill-in-blank exercises, use parentheses: (     )
+Example: 私(     )学生です。
+
+## Personality
+- Warm and encouraging but not over-the-top
+- Celebrate genuine progress
+- Gently correct mistakes
+- Keep responses focused and concise`;
+
+const FLEXIBLE_LESSON_PROMPT = `You are teaching a Japanese lesson based on Tae Kim's Grammar Guide.
+
+## Today's Topic
+{topic}: {subPatterns}
+
+## Current Component
+{component}
+
+## Component Context
+{componentContext}
+
+## Teaching Flow
+Guide the student naturally through this component. When ready, move to the next.
+
+## Response Format
+Respond naturally as Emi. At the end of your message, add a status line:
+[COMPONENT: {component}] [PROGRESS: {description}]
+
+Examples:
+[COMPONENT: grammar_intro] [PROGRESS: explained pattern, student practicing]
+[COMPONENT: vocabulary] [PROGRESS: 5/15 words introduced]
+[COMPONENT: exercises] [PROGRESS: 3 correct, moving to writing]
+[COMPONENT: complete] [PROGRESS: lesson finished]`;
+
+/**
+ * Parse the flexible response to extract component and progress
+ */
+export function parseFlexibleResponse(response: string): FlexibleLessonResponse {
+  // Default values
+  let message = response;
+  let component: LessonComponent = "grammar_intro";
+  let progress = "";
+
+  // Try to extract [COMPONENT: ...] [PROGRESS: ...]
+  const statusMatch = response.match(/\[COMPONENT:\s*([^\]]+)\]\s*\[PROGRESS:\s*([^\]]+)\]/i);
+
+  if (statusMatch) {
+    // Remove the status line from the message
+    message = response.replace(statusMatch[0], "").trim();
+
+    const componentStr = statusMatch[1].trim().toLowerCase().replace(/\s+/g, "_");
+    progress = statusMatch[2].trim();
+
+    // Map to valid component
+    const componentMap: Record<string, LessonComponent> = {
+      grammar_intro: "grammar_intro",
+      grammar: "grammar_intro",
+      vocabulary: "vocabulary",
+      vocab: "vocabulary",
+      kanji: "kanji",
+      reading_practice: "reading_practice",
+      reading: "reading_practice",
+      dialogue_practice: "dialogue_practice",
+      dialogue: "dialogue_practice",
+      exercises: "exercises",
+      exercise: "exercises",
+      writing_practice: "writing_practice",
+      writing: "writing_practice",
+      complete: "complete",
+      finished: "complete",
+      done: "complete",
+    };
+
+    component = componentMap[componentStr] || "grammar_intro";
+  }
+
+  return { message, component, progress };
+}
+
+/**
+ * Check if a component is complete based on progress description
+ */
+export function isComponentComplete(progress: string): boolean {
+  const lowerProgress = progress.toLowerCase();
+  return (
+    lowerProgress.includes("complete") ||
+    lowerProgress.includes("finished") ||
+    lowerProgress.includes("done") ||
+    lowerProgress.includes("moving to")
+  );
+}
+
+/**
+ * Generate a flexible lesson response
+ */
+export async function generateFlexibleLessonResponse(
+  userMessage: string,
+  state: FlexibleLessonState,
+  lessonContent: TaeKimLessonContent,
+  componentContext: string,
+  conversationContext?: ConversationContext,
+): Promise<FlexibleLessonResponse> {
+  const client = getClient();
+
+  const prompt = FLEXIBLE_LESSON_PROMPT.replace("{topic}", lessonContent.topic)
+    .replace("{subPatterns}", lessonContent.subPatterns.join(", "))
+    .replace("{component}", state.currentComponent)
+    .replace("{componentContext}", componentContext);
+
+  const systemPrompt = EMI_PERSONALITY_TAEKIM + "\n\n" + prompt;
+
+  const messages = buildContextMessages(systemPrompt, userMessage, conversationContext);
+
+  const response = await client.chat.completions.create({
+    model: getChatModel(),
+    max_tokens: 1500,
+    messages,
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    return {
+      message: "I'm sorry, I couldn't generate a response. Please try again.",
+      component: state.currentComponent,
+      progress: "",
+    };
+  }
+
+  return parseFlexibleResponse(content);
+}
+
+/**
+ * Generate intro message for a Tae Kim lesson
+ */
+export async function generateTaeKimLessonIntro(
+  lessonContent: TaeKimLessonContent,
+  conversationContext?: ConversationContext,
+): Promise<string> {
+  const client = getClient();
+
+  const prompt = `You're starting Lesson ${lessonContent.lessonNumber}: "${lessonContent.topic}"
+
+Grammar patterns: ${lessonContent.subPatterns.join(", ")}
+
+Learning objectives:
+${lessonContent.learningObjectives.map((o) => `- ${o}`).join("\n")}
+
+Welcome the student warmly and give a brief overview of what they'll learn today. Keep it concise and exciting!`;
+
+  const response = await client.chat.completions.create({
+    model: getChatModel(),
+    max_tokens: 400,
+    messages: buildContextMessages(EMI_PERSONALITY_TAEKIM, prompt, conversationContext),
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    return `Welcome to Lesson ${lessonContent.lessonNumber}: ${lessonContent.topic}! Let's learn ${lessonContent.subPatterns.slice(0, 3).join(", ")}!`;
+  }
+
+  return content;
+}
+
+/**
+ * Generate completion message for a Tae Kim lesson
+ */
+export async function generateTaeKimLessonComplete(
+  lessonContent: TaeKimLessonContent,
+  score: number,
+  conversationContext?: ConversationContext,
+): Promise<string> {
+  const client = getClient();
+
+  const prompt = `Lesson ${lessonContent.lessonNumber} "${lessonContent.topic}" is complete!
+The student's score: ${score}%
+
+Grammar patterns mastered: ${lessonContent.subPatterns.join(", ")}
+
+Celebrate their achievement! Summarize what they learned and encourage them to practice. Suggest they try the next lesson when ready.`;
+
+  const response = await client.chat.completions.create({
+    model: getChatModel(),
+    max_tokens: 400,
+    messages: buildContextMessages(EMI_PERSONALITY_TAEKIM, prompt, conversationContext),
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    return `Congratulations! You've completed Lesson ${lessonContent.lessonNumber}: ${lessonContent.topic}! Score: ${score}%`;
   }
 
   return content;

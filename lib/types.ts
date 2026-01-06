@@ -194,6 +194,29 @@ export interface MasteryData {
 }
 
 // ==========================================
+// Core 2.3k Vocabulary (frequency-ranked)
+// ==========================================
+
+export interface CoreVocabItem {
+  word: string; // "する"
+  furigana: string; // "する"
+  definition: string; // "do, make"
+  exampleJapanese: string; // "友達と一緒に宿題をした。"
+  exampleEnglish: string; // "I did my homework with a friend."
+  rank: number; // Position in CSV (1 = most common)
+}
+
+export interface VocabProgress {
+  word: string;
+  timesSeen: number;
+  timesCorrect: number;
+  lastSeen: number; // timestamp
+  status: "new" | "learning" | "known" | "ignored";
+}
+
+export type VocabProgressMap = Record<string, VocabProgress>;
+
+// ==========================================
 // N5 Syllabus Structure
 // ==========================================
 
@@ -285,6 +308,9 @@ export type Intent =
   // Catch-up intents
   | ShowMissedLessonsIntent
   | StartCatchUpIntent
+  // Tae Kim curriculum intents
+  | StartTaeKimLessonIntent
+  | ResumeTaeKimLessonIntent
   // General
   | ConversationIntent;
 
@@ -513,4 +539,215 @@ export interface LessonLLMResponse {
     type: "clarify";
     content: string; // What to clarify
   };
+}
+
+// ==========================================
+// Tae Kim Curriculum Types (New Flexible System)
+// ==========================================
+
+/**
+ * Sentence triad format: Kanji/Kana/English
+ * Used for all Japanese sentences in reading, dialogues, exercises
+ */
+export interface TriadSentence {
+  kanji: string; // "昨日、映画を見ました。"
+  kana: string; // "きのう、えいがをみました。"
+  english: string; // "Yesterday, I watched a movie."
+}
+
+/**
+ * Reading passage with real-world scenario
+ */
+export interface ReadingPassage {
+  scenario: string; // "At a convenience store"
+  sentences: TriadSentence[];
+  targetGrammar: string[]; // Grammar pattern IDs used
+  targetVocabulary: string[]; // Vocabulary IDs used
+}
+
+/**
+ * Dialogue exchange between participants
+ */
+export interface DialogueExchange {
+  speaker: string; // "Customer", "Store clerk", "You"
+  lines: TriadSentence[];
+}
+
+/**
+ * Dialogue practice with role-play scenario
+ */
+export interface DialoguePractice {
+  scenario: string; // "Ordering coffee at a cafe"
+  participants: string[]; // ["You", "Barista"]
+  exchanges: DialogueExchange[];
+  practiceNotes?: string; // Tips for the student
+}
+
+/**
+ * Practice exercise types
+ */
+export type FlexibleExerciseType =
+  | "multiple_choice"
+  | "fill_in_blank"
+  | "translation_jp_to_en"
+  | "translation_en_to_jp"
+  | "sentence_completion";
+
+/**
+ * Practice exercise
+ */
+export interface PracticeExercise {
+  id: string;
+  type: FlexibleExerciseType;
+  prompt: string; // The question/prompt
+  promptKana?: string; // Kana reading if prompt has kanji
+  options?: string[]; // For multiple choice: ["a) ...", "b) ...", "c) ..."]
+  blankPosition?: number; // For fill_in_blank: position of (     ) in prompt
+  expectedAnswers: string[]; // Acceptable answers
+  explanation: string; // Why this is correct
+  targetItem?: string; // Grammar/vocab ID being tested
+}
+
+/**
+ * Writing exercise
+ */
+export interface WritingExercise {
+  id: string;
+  type: "sentence_creation" | "dialogue_completion" | "free_response";
+  prompt: string; // Instructions for the student
+  targetStructures: string[]; // Grammar patterns to use
+  exampleResponse?: TriadSentence; // Example of good response
+  evaluationCriteria: string[]; // What to look for
+}
+
+/**
+ * Tae Kim lesson definition (curriculum structure)
+ */
+export interface TaeKimLesson {
+  lessonNumber: number; // 1-41
+  topicId: string; // "tk_01", "tk_02", etc.
+  topic: string; // "State of Being", "Particles", etc.
+  subPatterns: string[]; // ["だ", "です", "じゃない", ...]
+  prerequisites: string[]; // Topic IDs that must come first
+  description: string; // What this lesson covers
+}
+
+/**
+ * Full lesson content (base + generated)
+ */
+export interface TaeKimLessonContent {
+  lessonNumber: number;
+  topicId: string;
+  topic: string;
+  subPatterns: string[];
+
+  // Core content (predefined in curriculum files)
+  grammarExplanation: string;
+  vocabulary: VocabularyItem[]; // 15-20 words
+  kanji: KanjiItem[]; // 5-6 characters
+  learningObjectives: string[];
+
+  // Rich content (LLM-generated on lesson start)
+  readingPassage?: ReadingPassage;
+  dialoguePractice?: DialoguePractice;
+  practiceExercises?: PracticeExercise[];
+  writingExercise?: WritingExercise;
+
+  // Metadata
+  estimatedMinutes: number;
+  culturalNote?: string;
+}
+
+/**
+ * Lesson component types for flexible flow
+ */
+export type LessonComponent =
+  | "grammar_intro"
+  | "vocabulary"
+  | "kanji"
+  | "reading_practice"
+  | "dialogue_practice"
+  | "exercises"
+  | "writing_practice"
+  | "complete";
+
+/**
+ * Progress tracking for each component
+ */
+export interface ComponentProgress {
+  status: "not_started" | "in_progress" | "completed";
+  itemsIntroduced: number;
+  itemsPracticed: number;
+  correctCount: number;
+  incorrectCount: number;
+}
+
+/**
+ * Flexible lesson state (replaces rigid checklist)
+ */
+export interface FlexibleLessonState {
+  chatId: number;
+  lessonNumber: number;
+  topicId: string;
+  topic: string;
+
+  // Component tracking
+  currentComponent: LessonComponent;
+  completedComponents: LessonComponent[];
+  componentProgress: Record<LessonComponent, ComponentProgress>;
+
+  // Generated content cache (stored in state to avoid regeneration)
+  generatedContent: {
+    readingPassage?: ReadingPassage;
+    dialoguePractice?: DialoguePractice;
+    exercises?: PracticeExercise[];
+    writingExercise?: WritingExercise;
+  };
+
+  // Progress tracking
+  vocabularyIntroduced: string[]; // Vocab IDs taught
+  kanjiIntroduced: string[]; // Kanji IDs taught
+  exerciseResults: {
+    correct: number;
+    incorrect: number;
+  };
+
+  // Timestamps
+  startedAt: number;
+  lastInteraction: number;
+}
+
+/**
+ * Tae Kim progress tracking per user
+ */
+export interface TaeKimProgress {
+  chatId: number;
+  completedLessons: number[]; // Lesson numbers completed
+  currentLesson: number; // Current/next lesson number
+  lessonScores: Record<number, number>; // lessonNumber -> score (0-100)
+  lastCompletedAt?: number;
+  totalTimeSpent: number; // Minutes across all lessons
+}
+
+/**
+ * Parsed natural LLM response
+ */
+export interface FlexibleLessonResponse {
+  message: string; // What to send to user (status indicator removed)
+  component: LessonComponent; // Current component
+  progress: string; // Progress description
+}
+
+// ==========================================
+// Intent Types for Tae Kim System
+// ==========================================
+
+export interface StartTaeKimLessonIntent {
+  type: "start_taekim_lesson";
+  lessonNumber?: number; // Optional: specific lesson (1-41)
+  topicName?: string; // Optional: by topic name
+}
+
+export interface ResumeTaeKimLessonIntent {
+  type: "resume_taekim_lesson";
 }

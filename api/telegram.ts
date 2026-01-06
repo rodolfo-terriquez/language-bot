@@ -451,6 +451,12 @@ async function handleChecklistLesson(
         await redis.saveLessonChecklist(updatedChecklist);
         await telegram.sendMessage(chatId, llmResponse.message);
 
+        // Add first message to conversation
+        await redis.addToConversation(chatId, userText, llmResponse.message, {
+          dayNumber: checklist.dayNumber,
+          phase: "vocabulary_teaching",
+        });
+
         // Generate completion message
         const profile = await redis.getUserProfile(chatId);
         const completionMsg = await generateLessonComplete(
@@ -470,7 +476,8 @@ async function handleChecklistLesson(
           await redis.advanceToNextDay(chatId);
         }
 
-        return llmResponse.message + "\n\n" + completionMsg;
+        // Return only the completion message (previous one already saved)
+        return completionMsg;
       } else {
         // More items remain - send response and auto-continue to next item
         await redis.saveLessonChecklist(updatedChecklist);
@@ -680,6 +687,12 @@ async function handleStartLesson(
   const introResponse = await generateLessonIntro(checklist, context);
   await telegram.sendMessage(chatId, introResponse);
 
+  // Add intro to conversation
+  await redis.addToConversation(chatId, "", introResponse, {
+    dayNumber,
+    phase: "vocabulary_teaching",
+  });
+
   // Now start the first teaching item by generating the first LLM response
   await sleep(AUTO_CONTINUE_DEBOUNCE_MS);
   const firstItemResponse = await generateLessonResponse(
@@ -696,7 +709,8 @@ async function handleStartLesson(
 
   await telegram.sendMessage(chatId, firstItemResponse.message);
 
-  return introResponse + "\n\n" + firstItemResponse.message;
+  // Return only the last message (intro already saved)
+  return firstItemResponse.message;
 }
 
 async function handleRestartLesson(
@@ -741,9 +755,21 @@ async function handleRestartLesson(
   const restartMsg = `Restarting Day ${dayNumber}: ${checklist.title} from the beginning!`;
   await telegram.sendMessage(chatId, restartMsg);
 
+  // Add restart message to conversation
+  await redis.addToConversation(chatId, "", restartMsg, {
+    dayNumber,
+    phase: "vocabulary_teaching",
+  });
+
   // Generate intro message
   const introResponse = await generateLessonIntro(checklist, context);
   await telegram.sendMessage(chatId, introResponse);
+
+  // Add intro to conversation
+  await redis.addToConversation(chatId, "", introResponse, {
+    dayNumber,
+    phase: "vocabulary_teaching",
+  });
 
   // Start the first teaching item
   await sleep(AUTO_CONTINUE_DEBOUNCE_MS);
@@ -760,7 +786,8 @@ async function handleRestartLesson(
 
   await telegram.sendMessage(chatId, firstItemResponse.message);
 
-  return restartMsg + "\n\n" + introResponse + "\n\n" + firstItemResponse.message;
+  // Return only the last message (previous ones already saved)
+  return firstItemResponse.message;
 }
 
 async function handlePauseLesson(chatId: number, context: ConversationContext): Promise<string> {
@@ -1390,6 +1417,12 @@ async function handleFlexibleLesson(
     // Send teaching response
     await telegram.sendMessage(chatId, llmResponse.message);
 
+    // Add teaching response to conversation
+    await redis.addToConversation(chatId, userText, llmResponse.message, {
+      dayNumber: state.lessonNumber,
+      phase: "vocabulary_teaching",
+    });
+
     // Generate and send completion message
     const score = calculateLessonScore(updatedState);
     const completionMsg = await generateTaeKimLessonComplete(lessonContent, score, context);
@@ -1409,7 +1442,8 @@ async function handleFlexibleLesson(
     // Clear lesson state
     await redis.clearFlexibleLessonState(chatId);
 
-    return llmResponse.message + "\n\n" + completionMsg;
+    // Return only completion message (previous one already saved)
+    return completionMsg;
   }
 
   // Save updated state

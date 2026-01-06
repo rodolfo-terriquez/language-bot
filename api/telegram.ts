@@ -14,6 +14,7 @@ import type {
   StartTaeKimLessonIntent,
   ResumeTaeKimLessonIntent,
   FlexibleLessonState,
+  ResetProgressIntent,
 } from "../lib/types.js";
 import * as telegram from "../lib/telegram.js";
 import { transcribeAudio } from "../lib/whisper.js";
@@ -319,6 +320,8 @@ async function handleIntent(
       );
       await telegram.sendMessage(chatId, response);
       return response;
+    case "reset_progress":
+      return handleResetProgress(chatId, intent as ResetProgressIntent, context);
     default:
       return null;
   }
@@ -1502,4 +1505,50 @@ async function handleShowTaeKimProgress(
 
   await telegram.sendMessage(chatId, message);
   return message;
+}
+
+/**
+ * Handle reset progress request
+ */
+async function handleResetProgress(
+  chatId: number,
+  intent: ResetProgressIntent,
+  context: ConversationContext,
+): Promise<string> {
+  const scope = intent.scope || "all";
+
+  // Confirmation messages based on scope
+  const scopeDescriptions: Record<string, string> = {
+    all: "ALL progress (vocabulary, lessons, streaks)",
+    vocabulary: "vocabulary progress only",
+    lessons: "lesson progress only",
+    current_lesson: "current lesson only",
+  };
+
+  // If not confirmed, ask for confirmation
+  if (!intent.confirmed) {
+    const confirmMsg = `Are you sure you want to reset ${scopeDescriptions[scope]}? This cannot be undone.\n\nSay "yes, reset ${scope === "all" ? "everything" : scope}" to confirm.`;
+    await telegram.sendMessage(chatId, confirmMsg);
+    return confirmMsg;
+  }
+
+  // Perform the reset based on scope
+  switch (scope) {
+    case "all":
+      await redis.resetAllProgress(chatId);
+      break;
+    case "vocabulary":
+      await redis.resetVocabularyProgress(chatId);
+      break;
+    case "lessons":
+      await redis.resetLessonProgress(chatId);
+      break;
+    case "current_lesson":
+      await redis.resetCurrentLesson(chatId);
+      break;
+  }
+
+  const successMsg = `Done! Your ${scopeDescriptions[scope]} has been reset. You're starting fresh!`;
+  await telegram.sendMessage(chatId, successMsg);
+  return successMsg;
 }

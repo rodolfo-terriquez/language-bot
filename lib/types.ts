@@ -311,6 +311,8 @@ export type Intent =
   // Tae Kim curriculum intents
   | StartTaeKimLessonIntent
   | ResumeTaeKimLessonIntent
+  // Reset intents
+  | ResetProgressIntent
   // General
   | ConversationIntent;
 
@@ -750,4 +752,10 @@ export interface StartTaeKimLessonIntent {
 
 export interface ResumeTaeKimLessonIntent {
   type: "resume_taekim_lesson";
+}
+
+export interface ResetProgressIntent {
+  type: "reset_progress";
+  scope: "all" | "vocabulary" | "lessons" | "current_lesson";
+  confirmed?: boolean; // Whether user has confirmed the reset
 }

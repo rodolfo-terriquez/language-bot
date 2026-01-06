@@ -244,6 +244,16 @@ CATCH-UP:
   start_catch_up → {"type":"start_catch_up","dayNumber":N}
     "do day 3", "start missed lesson", "catch up on day 5"
 
+RESET:
+  reset_progress → {"type":"reset_progress","scope":"all"|"vocabulary"|"lessons"|"current_lesson","confirmed":boolean}
+    "reset all progress", "start fresh", "clear my progress" → scope: "all", confirmed: false
+    "reset vocabulary", "clear vocab progress" → scope: "vocabulary", confirmed: false
+    "reset lessons", "clear lesson history" → scope: "lessons", confirmed: false
+    "reset current lesson", "restart from scratch" → scope: "current_lesson", confirmed: false
+    "yes, reset everything", "yes reset all" → scope: "all", confirmed: true
+    "yes, reset vocabulary" → scope: "vocabulary", confirmed: true
+    "yes, reset lessons" → scope: "lessons", confirmed: true
+
 GENERAL:
   conversation → {"type":"conversation","message":"..."}
     General chat, greetings, questions not related to above

@@ -1216,3 +1216,75 @@ export async function getVocabStats(chatId: number): Promise<{
     ignored: words.filter((w) => w.status === "ignored").length,
   };
 }
+
+// ==========================================
+// Progress Reset Functions
+// ==========================================
+
+/**
+ * Reset all progress for a user (vocabulary, lessons, current state)
+ */
+export async function resetAllProgress(chatId: number): Promise<void> {
+  const redis = getClient();
+
+  // Delete all progress-related keys
+  await Promise.all([
+    redis.del(VOCAB_PROGRESS_KEY(chatId)),
+    redis.del(TAEKIM_PROGRESS_KEY(chatId)),
+    redis.del(FLEXIBLE_LESSON_KEY(chatId)),
+    redis.del(MASTERY_KEY(chatId)),
+    redis.del(ACTIVE_LESSON_KEY(chatId)),
+    redis.del(LESSONS_SET_KEY(chatId)),
+  ]);
+
+  // Reset user profile to initial state but keep preferences
+  const profile = await getUserProfile(chatId);
+  if (profile) {
+    profile.currentDay = 1;
+    profile.currentStreak = 0;
+    profile.longestStreak = 0;
+    profile.totalLessonsCompleted = 0;
+    profile.lastLessonDate = undefined;
+    await updateUserProfile(profile);
+  }
+}
+
+/**
+ * Reset vocabulary progress only
+ */
+export async function resetVocabularyProgress(chatId: number): Promise<void> {
+  const redis = getClient();
+  await redis.del(VOCAB_PROGRESS_KEY(chatId));
+}
+
+/**
+ * Reset Tae Kim lesson progress only
+ */
+export async function resetLessonProgress(chatId: number): Promise<void> {
+  const redis = getClient();
+
+  await Promise.all([
+    redis.del(TAEKIM_PROGRESS_KEY(chatId)),
+    redis.del(FLEXIBLE_LESSON_KEY(chatId)),
+    redis.del(MASTERY_KEY(chatId)),
+    redis.del(ACTIVE_LESSON_KEY(chatId)),
+    redis.del(LESSONS_SET_KEY(chatId)),
+  ]);
+
+  // Reset lesson-related profile fields
+  const profile = await getUserProfile(chatId);
+  if (profile) {
+    profile.currentDay = 1;
+    profile.totalLessonsCompleted = 0;
+    await updateUserProfile(profile);
+  }
+}
+
+/**
+ * Reset current lesson only (keeps overall progress)
+ */
+export async function resetCurrentLesson(chatId: number): Promise<void> {
+  const redis = getClient();
+
+  await Promise.all([redis.del(FLEXIBLE_LESSON_KEY(chatId)), redis.del(ACTIVE_LESSON_KEY(chatId))]);
+}

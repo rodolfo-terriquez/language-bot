@@ -627,6 +627,12 @@ async function handleStartLesson(
     const response = `You're already in Day ${existingChecklist.dayNumber}. Let's continue where we left off!`;
     await telegram.sendMessage(chatId, response);
 
+    // Add to conversation before auto-continuing
+    await redis.addToConversation(chatId, "", response, {
+      dayNumber: existingChecklist.dayNumber,
+      phase: "vocabulary_teaching",
+    });
+
     // Send the first teaching prompt to resume
     await sleep(AUTO_CONTINUE_DEBOUNCE_MS);
     const resumeResponse = await handleChecklistLesson(
@@ -635,7 +641,8 @@ async function handleStartLesson(
       existingChecklist,
       context,
     );
-    return response + "\n\n" + resumeResponse;
+    // Return only the final message (previous one already saved)
+    return resumeResponse;
   }
 
   // Check for legacy active lesson state
@@ -832,6 +839,12 @@ async function handleResumeLesson(chatId: number, context: ConversationContext):
 
   // Continue the lesson - for checklist lessons, the next message will be handled by handleChecklistLesson
   if (activeChecklist) {
+    // Add to conversation before auto-continuing
+    await redis.addToConversation(chatId, "", response, {
+      dayNumber: activeChecklist.dayNumber,
+      phase: "vocabulary_teaching",
+    });
+
     // Generate the next teaching prompt
     const resumeResponse = await handleChecklistLesson(
       chatId,
@@ -839,7 +852,8 @@ async function handleResumeLesson(chatId: number, context: ConversationContext):
       activeChecklist,
       context,
     );
-    return response + "\n\n" + resumeResponse;
+    // Return only the final message (previous one already saved)
+    return resumeResponse;
   } else {
     // Legacy flow
     await continueLesson(chatId, context);

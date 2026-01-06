@@ -1235,6 +1235,8 @@ export async function resetAllProgress(chatId: number): Promise<void> {
     redis.del(MASTERY_KEY(chatId)),
     redis.del(ACTIVE_LESSON_KEY(chatId)),
     redis.del(LESSONS_SET_KEY(chatId)),
+    redis.del(LESSON_CHECKLIST_KEY(chatId)),
+    redis.del(CONVERSATION_KEY(chatId)),
   ]);
 
   // Reset user profile to initial state but keep preferences
@@ -1269,6 +1271,7 @@ export async function resetLessonProgress(chatId: number): Promise<void> {
     redis.del(MASTERY_KEY(chatId)),
     redis.del(ACTIVE_LESSON_KEY(chatId)),
     redis.del(LESSONS_SET_KEY(chatId)),
+    redis.del(LESSON_CHECKLIST_KEY(chatId)),
   ]);
 
   // Reset lesson-related profile fields
@@ -1286,5 +1289,9 @@ export async function resetLessonProgress(chatId: number): Promise<void> {
 export async function resetCurrentLesson(chatId: number): Promise<void> {
   const redis = getClient();
 
-  await Promise.all([redis.del(FLEXIBLE_LESSON_KEY(chatId)), redis.del(ACTIVE_LESSON_KEY(chatId))]);
+  await Promise.all([
+    redis.del(FLEXIBLE_LESSON_KEY(chatId)),
+    redis.del(ACTIVE_LESSON_KEY(chatId)),
+    redis.del(LESSON_CHECKLIST_KEY(chatId)),
+  ]);
 }

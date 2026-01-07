@@ -174,6 +174,18 @@ Just start chatting in Japanese (or English if you prefer), and I'll match your 
       return;
     }
 
+    // Handle /reset commands
+    const resetMatch = userText
+      .trim()
+      .toLowerCase()
+      .match(/^\/reset\s*(all|context)?$/);
+    if (resetMatch) {
+      const resetType = resetMatch[1] || "context"; // default to context if no argument
+      await handleResetCommand(chatId, resetType as "all" | "context");
+      res.status(200).json({ ok: true });
+      return;
+    }
+
     // Get conversation context and memory
     const [conversationData, profile, memory, emiMemory] = await Promise.all([
       redis.getConversationData(chatId),
@@ -220,6 +232,28 @@ Just start chatting in Japanese (or English if you prefer), and I'll match your 
       } catch {}
     }
     res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+async function handleResetCommand(chatId: number, type: "all" | "context"): Promise<void> {
+  if (type === "all") {
+    await Promise.all([
+      redis.clearConversation(chatId),
+      redis.saveLongTermMemory(chatId, { facts: [], updatedAt: Date.now() }),
+      redis.saveEmiMemory({ facts: [], updatedAt: Date.now() }),
+    ]);
+
+    await telegram.sendMessage(
+      chatId,
+      "All cleared! Conversation history, your memory, and my memory have been reset. Let's start fresh!",
+    );
+  } else {
+    await redis.clearConversation(chatId);
+
+    await telegram.sendMessage(
+      chatId,
+      "Conversation history cleared! My memories about you (and about myself) are still intact.",
+    );
   }
 }
 

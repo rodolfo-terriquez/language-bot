@@ -96,12 +96,18 @@ export async function createUserProfile(chatId: number, displayName: string): Pr
     displayName,
     lessonTime: "09:00", // Default lesson time
     timezone: process.env.USER_TIMEZONE || "America/Mexico_City",
-    currentDay: 1,
+    currentDay: 1, // Legacy field
+    currentLesson: 1, // Tae Kim lesson number (1-48)
     startDate: now,
     totalLessonsCompleted: 0,
     currentStreak: 0,
     longestStreak: 0,
     preferredInputMode: "both",
+    // New unified lesson system fields
+    completedGrammarTopics: [],
+    strugglingAreas: [],
+    difficultyLevel: "normal",
+    learningNotes: [],
     createdAt: now,
     updatedAt: now,
   };
@@ -1116,8 +1122,15 @@ export async function saveVocabProgress(chatId: number, progress: VocabProgressM
 
 /**
  * Update vocabulary when seen in a lesson
+ * @param chatId - User's chat ID
+ * @param word - The word that was seen
+ * @param lessonNumber - Optional lesson number for tracking source lessons
  */
-export async function updateVocabSeen(chatId: number, word: string): Promise<void> {
+export async function updateVocabSeen(
+  chatId: number,
+  word: string,
+  lessonNumber?: number,
+): Promise<void> {
   const progress = await getVocabProgress(chatId);
   const now = Date.now();
 
@@ -1143,6 +1156,10 @@ export async function updateVocabSeen(chatId: number, word: string): Promise<voi
 
 /**
  * Update vocabulary when correctly recalled
+ * Auto-promotes to "known" if:
+ * - Correct count >= 3
+ * - Success rate >= 80%
+ * (Matches Python vocab_manager.py logic)
  */
 export async function updateVocabCorrect(chatId: number, word: string): Promise<void> {
   const progress = await getVocabProgress(chatId);
@@ -1160,8 +1177,14 @@ export async function updateVocabCorrect(chatId: number, word: string): Promise<
     progress[word].timesCorrect++;
     progress[word].lastSeen = now;
 
-    // Auto-promote to "known" after 5 correct recalls
-    if (progress[word].timesCorrect >= 5 && progress[word].status === "learning") {
+    // Auto-promote to "known" if success rate >= 80% and correct >= 3
+    // (Matches Python vocab_manager.py logic)
+    const successRate = progress[word].timesCorrect / progress[word].timesSeen;
+    if (
+      progress[word].timesCorrect >= 3 &&
+      successRate >= 0.8 &&
+      progress[word].status === "learning"
+    ) {
       progress[word].status = "known";
     }
   }
@@ -1215,6 +1238,174 @@ export async function getVocabStats(chatId: number): Promise<{
     known: words.filter((w) => w.status === "known").length,
     ignored: words.filter((w) => w.status === "ignored").length,
   };
+}
+
+// ==========================================
+// Lesson Content Storage (New Unified System)
+// ==========================================
+
+const LESSON_CONTENT_KEY = (chatId: number, lessonNumber: number) =>
+  `${getKeyPrefix()}lesson_content:${chatId}:${lessonNumber}`;
+const LESSON_STATE_KEY = (chatId: number) => `${getKeyPrefix()}lesson_state:${chatId}`;
+
+const LESSON_CONTENT_TTL = 7 * 24 * 60 * 60; // 7 days
+const LESSON_STATE_TTL = 24 * 60 * 60; // 24 hours
+
+/**
+ * Lesson content structure for the new unified system
+ */
+export interface StoredLessonContent {
+  lessonNumber: number;
+  topic: string;
+  grammarPatterns: string[];
+  grammarExplanation: string;
+  vocabulary: Array<{
+    word: string;
+    reading: string;
+    meaning: string;
+    mnemonic?: string;
+    exampleSentence?: string;
+    exampleReading?: string;
+    exampleMeaning?: string;
+  }>;
+  kanji: Array<{
+    character: string;
+    meanings: string[];
+    onyomi: string[];
+    kunyomi: string[];
+    strokeCount: number;
+    mnemonic?: string;
+    examples: Array<{ word: string; reading: string; meaning: string }>;
+  }>;
+  readingPassage: {
+    scenario: string;
+    sentences: Array<{ kanji: string; kana: string; english: string }>;
+  };
+  dialoguePractice: {
+    scenario: string;
+    participants: string[];
+    exchanges: Array<{
+      speaker: string;
+      lines: Array<{ kanji: string; kana: string; english: string }>;
+    }>;
+    practiceNotes?: string;
+  };
+  exercises: Array<{
+    id: string;
+    type: "multiple_choice" | "fill_in_blank" | "translation_jp_to_en" | "translation_en_to_jp";
+    prompt: string;
+    promptKana?: string;
+    options?: string[];
+    expectedAnswers: string[];
+    explanation: string;
+  }>;
+  generatedAt: number;
+}
+
+/**
+ * Lesson state for tracking progress through a lesson
+ */
+export interface StoredLessonState {
+  chatId: number;
+  lessonNumber: number;
+  currentComponent:
+    | "grammar"
+    | "vocabulary"
+    | "kanji"
+    | "reading"
+    | "dialogue"
+    | "exercises"
+    | "complete";
+  vocabIntroduced: string[];
+  vocabCorrect: string[];
+  exerciseResults: { correct: number; incorrect: number };
+  startedAt: number;
+  lastInteraction: number;
+}
+
+/**
+ * Save generated lesson content
+ */
+export async function saveLessonContent(
+  chatId: number,
+  lessonNumber: number,
+  content: StoredLessonContent,
+): Promise<void> {
+  const redis = getClient();
+  await redis.set(LESSON_CONTENT_KEY(chatId, lessonNumber), JSON.stringify(content), {
+    ex: LESSON_CONTENT_TTL,
+  });
+}
+
+/**
+ * Get cached lesson content
+ */
+export async function getLessonContent(
+  chatId: number,
+  lessonNumber: number,
+): Promise<StoredLessonContent | null> {
+  const redis = getClient();
+  const data = await redis.get<string>(LESSON_CONTENT_KEY(chatId, lessonNumber));
+  if (!data) return null;
+  return typeof data === "string" ? JSON.parse(data) : data;
+}
+
+/**
+ * Delete lesson content (e.g., to regenerate)
+ */
+export async function deleteLessonContent(chatId: number, lessonNumber: number): Promise<void> {
+  const redis = getClient();
+  await redis.del(LESSON_CONTENT_KEY(chatId, lessonNumber));
+}
+
+/**
+ * Save lesson state (progress through current lesson)
+ */
+export async function saveLessonState(state: StoredLessonState): Promise<void> {
+  const redis = getClient();
+  state.lastInteraction = Date.now();
+  await redis.set(LESSON_STATE_KEY(state.chatId), JSON.stringify(state), {
+    ex: LESSON_STATE_TTL,
+  });
+}
+
+/**
+ * Get lesson state
+ */
+export async function getLessonState(chatId: number): Promise<StoredLessonState | null> {
+  const redis = getClient();
+  const data = await redis.get<string>(LESSON_STATE_KEY(chatId));
+  if (!data) return null;
+  return typeof data === "string" ? JSON.parse(data) : data;
+}
+
+/**
+ * Clear lesson state (when lesson completes or is abandoned)
+ */
+export async function clearLessonState(chatId: number): Promise<void> {
+  const redis = getClient();
+  await redis.del(LESSON_STATE_KEY(chatId));
+}
+
+/**
+ * Create initial lesson state when starting a new lesson
+ */
+export async function createLessonState(
+  chatId: number,
+  lessonNumber: number,
+): Promise<StoredLessonState> {
+  const state: StoredLessonState = {
+    chatId,
+    lessonNumber,
+    currentComponent: "grammar",
+    vocabIntroduced: [],
+    vocabCorrect: [],
+    exerciseResults: { correct: 0, incorrect: 0 },
+    startedAt: Date.now(),
+    lastInteraction: Date.now(),
+  };
+  await saveLessonState(state);
+  return state;
 }
 
 // ==========================================

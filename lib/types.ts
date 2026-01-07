@@ -55,7 +55,8 @@ export interface UserProfile {
   displayName: string;
   lessonTime: string; // "HH:MM" format for daily lesson
   timezone: string; // User's timezone
-  currentDay: number; // Current syllabus day (1-30)
+  currentDay: number; // Current syllabus day (1-30) - legacy, use currentLesson for Tae Kim
+  currentLesson: number; // Current Tae Kim lesson number (1-48)
   startDate: number; // Timestamp when course started
   totalLessonsCompleted: number; // Track progress
   currentStreak: number; // Consecutive days with completed lessons
@@ -65,6 +66,13 @@ export interface UserProfile {
   weeklyProgressScheduleId?: string;
   streakReminderScheduleId?: string;
   preferredInputMode: "text" | "voice" | "both";
+
+  // New unified lesson system fields
+  completedGrammarTopics: string[]; // Tae Kim topic IDs completed
+  strugglingAreas: string[]; // Topics/patterns the user struggles with
+  difficultyLevel: "easy" | "normal" | "challenging"; // Adaptive difficulty
+  learningNotes: string[]; // LLM observations about the user's learning
+
   createdAt: number;
   updatedAt: number;
 }
@@ -313,6 +321,8 @@ export type Intent =
   | ResumeTaeKimLessonIntent
   // Reset intents
   | ResetProgressIntent
+  // Debug intents
+  | DebugContextIntent
   // General
   | ConversationIntent;
 
@@ -758,4 +768,8 @@ export interface ResetProgressIntent {
   type: "reset_progress";
   scope: "all" | "vocabulary" | "lessons" | "current_lesson";
   confirmed?: boolean; // Whether user has confirmed the reset
+}
+
+export interface DebugContextIntent {
+  type: "debug_context";
 }

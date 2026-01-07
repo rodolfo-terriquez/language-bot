@@ -27,6 +27,8 @@ import {
   generateLessonComplete,
   evaluateTeachingAnswer,
   ConversationContext,
+  teachLesson,
+  generateUnifiedLessonIntro,
 } from "../lib/llm.js";
 import * as redis from "../lib/redis.js";
 import * as lessonEngine from "../lib/lesson-engine.js";
@@ -157,13 +159,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
 
     // Get context
-    const [conversationData, activeLessonState, activeChecklist, flexibleLessonState] =
-      await Promise.all([
-        redis.getConversationData(chatId),
-        redis.getActiveLessonState(chatId),
-        redis.getLessonChecklist(chatId),
-        redis.getFlexibleLessonState(chatId),
-      ]);
+    const [
+      conversationData,
+      activeLessonState,
+      activeChecklist,
+      flexibleLessonState,
+      unifiedLessonState,
+    ] = await Promise.all([
+      redis.getConversationData(chatId),
+      redis.getActiveLessonState(chatId),
+      redis.getLessonChecklist(chatId),
+      redis.getFlexibleLessonState(chatId),
+      redis.getLessonState(chatId),
+    ]);
 
     const context: ConversationContext = {
       messages: conversationData.messages,
@@ -177,6 +185,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
     // Check if user wants to exit lesson flow (pause, chat, check progress, etc.)
     const wantsToExitLesson = shouldExitLessonFlow(intent);
+
+    // NEW UNIFIED LESSON SYSTEM (USE_UNIFIED_LESSONS=true)
+    // This takes priority over all other lesson systems
+    if (
+      process.env.USE_UNIFIED_LESSONS === "true" &&
+      unifiedLessonState &&
+      unifiedLessonState.currentComponent !== "complete" &&
+      !wantsToExitLesson
+    ) {
+      console.log(
+        `[${chatId}] Active unified lesson ${unifiedLessonState.lessonNumber}, component: ${unifiedLessonState.currentComponent}`,
+      );
+      const response = await handleUnifiedLesson(chatId, userText, context);
+      if (response) {
+        await redis.addToConversation(chatId, userText, response, {
+          dayNumber: unifiedLessonState.lessonNumber,
+          phase: "vocabulary_teaching",
+        });
+      }
+      res.status(200).json({ ok: true });
+      return;
+    }
 
     // Flexible Tae Kim lesson flow (unless user wants to exit)
     if (flexibleLessonState && !wantsToExitLesson) {
@@ -259,6 +289,10 @@ async function handleIntent(
 ): Promise<string | null> {
   switch (intent.type) {
     case "start_lesson":
+      // NEW UNIFIED LESSON SYSTEM takes priority
+      if (process.env.USE_UNIFIED_LESSONS === "true") {
+        return handleStartUnifiedLesson(chatId, intent.dayNumber || null, context);
+      }
       // Check if this should start a Tae Kim lesson instead
       // For now, use environment variable to toggle between systems
       if (process.env.USE_TAEKIM_CURRICULUM === "true") {
@@ -266,10 +300,35 @@ async function handleIntent(
       }
       return handleStartLesson(chatId, intent, context);
     case "restart_lesson":
+      // For unified system, clear state and start fresh
+      if (process.env.USE_UNIFIED_LESSONS === "true") {
+        await redis.clearLessonState(chatId);
+        const profile = await redis.getUserProfile(chatId);
+        const lessonNum = intent.dayNumber || profile?.currentLesson || 1;
+        await redis.deleteLessonContent(chatId, lessonNum);
+        return handleStartUnifiedLesson(chatId, lessonNum, context);
+      }
       return handleRestartLesson(chatId, intent, context);
     case "pause_lesson":
+      // For unified system, just acknowledge - state is preserved
+      if (process.env.USE_UNIFIED_LESSONS === "true") {
+        const state = await redis.getLessonState(chatId);
+        if (state) {
+          const response = `Lesson ${state.lessonNumber} paused. Say "continue" when you're ready to resume!`;
+          await telegram.sendMessage(chatId, response);
+          return response;
+        }
+      }
       return handlePauseLesson(chatId, context);
     case "resume_lesson":
+      // For unified system, continue where we left off
+      if (process.env.USE_UNIFIED_LESSONS === "true") {
+        const state = await redis.getLessonState(chatId);
+        if (state && state.currentComponent !== "complete") {
+          const response = await handleUnifiedLesson(chatId, "[RESUME]", context);
+          return response;
+        }
+      }
       return handleResumeLesson(chatId, context);
     case "show_progress":
       // Show Tae Kim progress if using that curriculum
@@ -349,6 +408,7 @@ function shouldExitLessonFlow(intent: Intent): boolean {
     "set_lesson_time",
     "show_missed_lessons",
     "reset_progress",
+    "debug_context",
   ];
 
   // Direct exit intents
@@ -1347,7 +1407,11 @@ import {
   buildComponentContext,
 } from "../lib/lesson-flow.js";
 import { getLesson, getLessonByTopicName, getTotalLessons } from "../lib/curriculum.js";
-import { generateFullLessonContent, generateDynamicContent } from "../lib/lesson-generator.js";
+import {
+  generateFullLessonContent,
+  generateDynamicContent,
+  getOrGenerateLesson,
+} from "../lib/lesson-generator.js";
 import type { TaeKimLessonContent } from "../lib/types.js";
 
 /**
@@ -1614,4 +1678,152 @@ async function handleResetProgress(
   const successMsg = `Done! Your ${scopeDescriptions[scope]} has been reset. You're starting fresh!`;
   await telegram.sendMessage(chatId, successMsg);
   return successMsg;
+}
+
+// ==========================================
+// NEW UNIFIED LESSON SYSTEM
+// Uses teachLesson() with LLM tools for full control
+// ==========================================
+
+/**
+ * Check if user has an active unified lesson
+ */
+async function hasUnifiedLesson(chatId: number): Promise<boolean> {
+  const state = await redis.getLessonState(chatId);
+  return state !== null && state.currentComponent !== "complete";
+}
+
+/**
+ * Handle messages during a unified lesson
+ * The LLM has full control over teaching using tools
+ */
+async function handleUnifiedLesson(
+  chatId: number,
+  userText: string,
+  context: ConversationContext,
+): Promise<string> {
+  // Get current lesson state
+  const state = await redis.getLessonState(chatId);
+  if (!state) {
+    const response = "No active lesson found. Say 'start lesson' to begin!";
+    await telegram.sendMessage(chatId, response);
+    return response;
+  }
+
+  // Get lesson content
+  const lesson = await redis.getLessonContent(chatId, state.lessonNumber);
+  if (!lesson) {
+    const response = "Could not load lesson content. Please try restarting the lesson.";
+    await telegram.sendMessage(chatId, response);
+    return response;
+  }
+
+  // Get user profile
+  const profile = await redis.getUserProfile(chatId);
+  if (!profile) {
+    const response = "Could not load your profile. Please try again.";
+    await telegram.sendMessage(chatId, response);
+    return response;
+  }
+
+  // Call teachLesson - LLM has full control with tools
+  const result = await teachLesson(
+    chatId,
+    userText,
+    lesson,
+    state,
+    {
+      displayName: profile.displayName,
+      strugglingAreas: profile.strugglingAreas,
+      difficultyLevel: profile.difficultyLevel,
+    },
+    context.messages,
+  );
+
+  // Send the response
+  await telegram.sendMessage(chatId, result.message);
+
+  // Log tool calls for debugging
+  if (result.toolCalls.length > 0) {
+    console.log(`[${chatId}] Tool calls:`, result.toolCalls.map((t) => t.name).join(", "));
+  }
+
+  // If lesson completed, clear state and update profile
+  if (result.lessonCompleted) {
+    await redis.clearLessonState(chatId);
+
+    // Update user profile
+    if (profile) {
+      profile.currentLesson = (profile.currentLesson || 1) + 1;
+      if (!profile.completedGrammarTopics) {
+        profile.completedGrammarTopics = [];
+      }
+      profile.completedGrammarTopics.push(lesson.topic);
+      await redis.updateUserProfile(profile);
+      await redis.updateStreak(chatId);
+    }
+  }
+
+  return result.message;
+}
+
+/**
+ * Start a new unified lesson
+ */
+async function handleStartUnifiedLesson(
+  chatId: number,
+  lessonNumber: number | null,
+  context: ConversationContext,
+): Promise<string> {
+  const profile = await redis.getUserProfile(chatId);
+  if (!profile) {
+    const response = "I couldn't find your profile. Please try again.";
+    await telegram.sendMessage(chatId, response);
+    return response;
+  }
+
+  // Check for existing lesson
+  const existingState = await redis.getLessonState(chatId);
+  if (existingState && existingState.currentComponent !== "complete") {
+    const response = `You're already in Lesson ${existingState.lessonNumber}. Say "continue" to resume or "restart lesson" to start over.`;
+    await telegram.sendMessage(chatId, response);
+    return response;
+  }
+
+  // Determine lesson number
+  const targetLesson = lessonNumber || profile.currentLesson || 1;
+
+  // Show loading message
+  await telegram.sendMessage(chatId, `Starting Lesson ${targetLesson}...`);
+
+  // Generate or get cached lesson content
+  const lesson = await getOrGenerateLesson(chatId, targetLesson);
+  if (!lesson) {
+    const response = "Could not generate lesson content. Please try again.";
+    await telegram.sendMessage(chatId, response);
+    return response;
+  }
+
+  // Create lesson state
+  const state = await redis.createLessonState(chatId, targetLesson);
+
+  // Generate intro message
+  const intro = await generateUnifiedLessonIntro(
+    lesson,
+    { displayName: profile.displayName },
+    context,
+  );
+  await telegram.sendMessage(chatId, intro);
+
+  // Add to conversation
+  await redis.addToConversation(chatId, "", intro, {
+    dayNumber: targetLesson,
+    phase: "vocabulary_teaching",
+  });
+
+  // Start teaching with first prompt
+  await sleep(AUTO_CONTINUE_DEBOUNCE_MS);
+  const firstResponse = await handleUnifiedLesson(chatId, "[START]", context);
+
+  return intro + "\n\n" + firstResponse;
 }

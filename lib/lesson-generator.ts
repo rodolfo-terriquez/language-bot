@@ -12,7 +12,14 @@ import type {
   CoreVocabItem,
 } from "./types.js";
 import { getLesson } from "./curriculum.js";
-import { getNextVocabulary, markVocabularySeen, formatVocabForLesson } from "./vocabulary.js";
+import {
+  getNextVocabulary,
+  getLessonVocabulary,
+  markVocabularySeen,
+  formatVocabForLesson,
+} from "./vocabulary.js";
+import * as redis from "./redis.js";
+import type { StoredLessonContent } from "./redis.js";
 
 // Get OpenRouter client
 function getClient(): OpenAI {
@@ -699,4 +706,276 @@ export async function generateDynamicContent(
     practiceExercises,
     writingExercise,
   };
+}
+
+// ==========================================
+// NEW UNIFIED LESSON SYSTEM
+// ==========================================
+
+/**
+ * Generate vocabulary with mnemonics for a lesson
+ */
+async function generateVocabularyMnemonics(
+  vocabulary: CoreVocabItem[],
+): Promise<Array<{ word: string; mnemonic: string }>> {
+  const client = getClient();
+
+  const vocabList = vocabulary.map((v) => `${v.word} (${v.furigana}) - ${v.definition}`).join("\n");
+
+  const prompt = `Generate memorable mnemonics for these Japanese vocabulary words.
+Make them vivid, funny, or use word associations to help remember the meaning.
+
+VOCABULARY:
+${vocabList}
+
+Output as JSON array:
+[
+  {"word": "する", "mnemonic": "Sue-ru always DOES everything - she's a do-er!"},
+  ...
+]`;
+
+  try {
+    const response = await client.chat.completions.create({
+      model: getGenerationModel(),
+      max_tokens: 2000,
+      temperature: 0.8,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a creative language learning expert. Create memorable, fun mnemonics. Output only valid JSON array.",
+        },
+        { role: "user", content: prompt },
+      ],
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) return [];
+
+    let jsonText = content.trim();
+    if (jsonText.startsWith("```")) {
+      jsonText = jsonText.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+    }
+    return JSON.parse(jsonText);
+  } catch (error) {
+    console.error("Failed to generate vocabulary mnemonics:", error);
+    return [];
+  }
+}
+
+/**
+ * Generate a grammar explanation that ties to previous lessons
+ */
+async function generateGrammarExplanation(
+  lesson: TaeKimLesson,
+  completedTopics: string[],
+): Promise<string> {
+  const client = getClient();
+
+  const previousContext =
+    completedTopics.length > 0
+      ? `The student has already learned: ${completedTopics.slice(-5).join(", ")}`
+      : "This is the student's first lesson.";
+
+  const prompt = `Write a clear, concise grammar explanation for: "${lesson.topic}"
+
+Grammar patterns to cover:
+${lesson.subPatterns.join("\n")}
+
+${previousContext}
+
+Guidelines:
+- Keep it conversational and encouraging
+- Use simple examples with the triad format (kanji, kana, english)
+- If relevant, connect to previously learned grammar
+- Focus on practical usage, not linguistic theory
+- Keep it under 300 words
+
+${TRIAD_FORMAT_INSTRUCTIONS}`;
+
+  try {
+    const response = await client.chat.completions.create({
+      model: getGenerationModel(),
+      max_tokens: 1500,
+      temperature: 0.7,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a friendly Japanese tutor explaining grammar in a clear, approachable way.",
+        },
+        { role: "user", content: prompt },
+      ],
+    });
+
+    return response.choices[0]?.message?.content || lesson.description;
+  } catch (error) {
+    console.error("Failed to generate grammar explanation:", error);
+    return lesson.description;
+  }
+}
+
+/**
+ * Get or generate a lesson for the new unified system.
+ * Checks Redis cache first, generates if not found.
+ *
+ * @param chatId - User's chat ID
+ * @param lessonNumber - Tae Kim lesson number (1-48)
+ * @returns StoredLessonContent or null if lesson doesn't exist
+ */
+export async function getOrGenerateLesson(
+  chatId: number,
+  lessonNumber: number,
+): Promise<StoredLessonContent | null> {
+  // Check cache first
+  const cached = await redis.getLessonContent(chatId, lessonNumber);
+  if (cached) {
+    console.log(`[lesson-generator] Using cached lesson ${lessonNumber} for user ${chatId}`);
+    return cached;
+  }
+
+  // Get lesson definition from Tae Kim curriculum
+  const lesson = getLesson(lessonNumber);
+  if (!lesson) {
+    console.error(`[lesson-generator] Lesson ${lessonNumber} not found in curriculum`);
+    return null;
+  }
+
+  console.log(
+    `[lesson-generator] Generating lesson ${lessonNumber}: ${lesson.topic} for user ${chatId}`,
+  );
+
+  // Get user's completed topics for context
+  const taeKimProgress = await redis.getTaeKimProgress(chatId);
+  const completedTopics = taeKimProgress.completedLessons
+    .map((n) => {
+      const l = getLesson(n);
+      return l?.topic || "";
+    })
+    .filter(Boolean);
+
+  // Get vocabulary: mix of new words and review words
+  const { newWords, reviewWords } = await getLessonVocabulary(chatId, 15, 5);
+  const allVocabulary = [...newWords, ...reviewWords];
+
+  // Generate content in parallel
+  const [grammarExplanation, vocabMnemonics, kanji] = await Promise.all([
+    generateGrammarExplanation(lesson, completedTopics),
+    generateVocabularyMnemonics(allVocabulary),
+    generateKanjiForLesson(lesson, 5),
+  ]);
+
+  // Build mnemonic map
+  const mnemonicMap = new Map(vocabMnemonics.map((m) => [m.word, m.mnemonic]));
+
+  // Build vocabulary array with mnemonics
+  const vocabulary = allVocabulary.map((v) => ({
+    word: v.word,
+    reading: v.furigana,
+    meaning: v.definition,
+    mnemonic: mnemonicMap.get(v.word),
+    exampleSentence: v.exampleJapanese,
+    exampleReading: undefined, // Could extract from example
+    exampleMeaning: v.exampleEnglish,
+  }));
+
+  // Create base content for generation functions
+  const baseContent: TaeKimLessonContent = {
+    lessonNumber: lesson.lessonNumber,
+    topicId: lesson.topicId,
+    topic: lesson.topic,
+    subPatterns: lesson.subPatterns,
+    grammarExplanation: grammarExplanation,
+    vocabulary: vocabulary.map((v, i) => ({
+      id: `v_${lessonNumber}_${i}`,
+      japanese: v.word,
+      reading: v.reading,
+      meaning: v.meaning,
+      partOfSpeech: "vocabulary",
+      exampleSentence: v.exampleSentence,
+      exampleMeaning: v.exampleMeaning,
+      difficulty: 1 as 1 | 2 | 3,
+    })),
+    kanji,
+    learningObjectives: [
+      `Understand and use ${lesson.subPatterns.slice(0, 3).join(", ")}`,
+      `Learn ${vocabulary.length} vocabulary words`,
+      `Practice with real-world scenarios`,
+    ],
+    estimatedMinutes: 30,
+  };
+
+  // Generate reading, dialogue, and exercises
+  const [readingPassage, dialoguePractice, exercises] = await Promise.all([
+    generateReadingPassage(baseContent, allVocabulary),
+    generateDialoguePractice(baseContent, allVocabulary),
+    generateExercises(baseContent, 6, allVocabulary),
+  ]);
+
+  // Build the stored lesson content
+  const storedContent: StoredLessonContent = {
+    lessonNumber,
+    topic: lesson.topic,
+    grammarPatterns: lesson.subPatterns,
+    grammarExplanation,
+    vocabulary,
+    kanji: kanji.map((k) => ({
+      character: k.character,
+      meanings: k.meanings,
+      onyomi: k.readings.onyomi,
+      kunyomi: k.readings.kunyomi,
+      strokeCount: k.strokeCount,
+      mnemonic: k.mnemonics,
+      examples: k.examples,
+    })),
+    readingPassage: {
+      scenario: readingPassage.scenario,
+      sentences: readingPassage.sentences,
+    },
+    dialoguePractice: {
+      scenario: dialoguePractice.scenario,
+      participants: dialoguePractice.participants,
+      exchanges: dialoguePractice.exchanges,
+      practiceNotes: dialoguePractice.practiceNotes,
+    },
+    exercises: exercises.map((e) => ({
+      id: e.id,
+      type: e.type as
+        | "multiple_choice"
+        | "fill_in_blank"
+        | "translation_jp_to_en"
+        | "translation_en_to_jp",
+      prompt: e.prompt,
+      promptKana: e.promptKana,
+      options: e.options,
+      expectedAnswers: e.expectedAnswers,
+      explanation: e.explanation,
+    })),
+    generatedAt: Date.now(),
+  };
+
+  // Save to Redis
+  await redis.saveLessonContent(chatId, lessonNumber, storedContent);
+
+  // Mark vocabulary as seen for this lesson
+  await markVocabularySeen(
+    chatId,
+    allVocabulary.map((v) => v.word),
+    lessonNumber,
+  );
+
+  console.log(`[lesson-generator] Generated and cached lesson ${lessonNumber} for user ${chatId}`);
+
+  return storedContent;
+}
+
+/**
+ * Force regenerate a lesson (delete cache and generate fresh)
+ */
+export async function regenerateLesson(
+  chatId: number,
+  lessonNumber: number,
+): Promise<StoredLessonContent | null> {
+  await redis.deleteLessonContent(chatId, lessonNumber);
+  return getOrGenerateLesson(chatId, lessonNumber);
 }

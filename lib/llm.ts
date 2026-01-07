@@ -254,6 +254,10 @@ RESET:
     "yes, reset vocabulary" → scope: "vocabulary", confirmed: true
     "yes, reset lessons" → scope: "lessons", confirmed: true
 
+DEBUG:
+  debug_context → {"type":"debug_context"}
+    "/debug", "show debug", "show context", "debug info"
+
 GENERAL:
   conversation → {"type":"conversation","message":"..."}
     General chat, greetings, questions not related to above
@@ -1258,6 +1262,309 @@ Celebrate their achievement! Summarize what they learned and encourage them to p
   const content = response.choices[0]?.message?.content;
   if (!content) {
     return `Congratulations! You've completed Lesson ${lessonContent.lessonNumber}: ${lessonContent.topic}! Score: ${score}%`;
+  }
+
+  return content;
+}
+
+// ==========================================
+// NEW UNIFIED LESSON SYSTEM - teachLesson
+// ==========================================
+
+import type { StoredLessonContent, StoredLessonState } from "./redis.js";
+import { lessonToolDefinitions, executeToolCall, getToolsDescription } from "./lesson-tools.js";
+import type { ChatCompletionTool } from "openai/resources/chat/completions";
+
+/**
+ * System prompt for the unified lesson teaching
+ * Gives the LLM full control over the lesson flow
+ */
+function buildTeachingSystemPrompt(
+  lesson: StoredLessonContent,
+  state: StoredLessonState,
+  userProfile: { displayName: string; strugglingAreas?: string[]; difficultyLevel?: string },
+): string {
+  const currentComponent = state.currentComponent;
+
+  // Build lesson content as readable text
+  const lessonContent = `
+# Lesson ${lesson.lessonNumber}: ${lesson.topic}
+
+## Grammar Patterns
+${lesson.grammarPatterns.join(", ")}
+
+## Grammar Explanation
+${lesson.grammarExplanation}
+
+## Vocabulary (${lesson.vocabulary.length} words)
+${lesson.vocabulary
+  .map(
+    (v, i) =>
+      `${i + 1}. **${v.word}** (${v.reading}) - ${v.meaning}${v.mnemonic ? `\n   Mnemonic: ${v.mnemonic}` : ""}`,
+  )
+  .join("\n")}
+
+## Kanji (${lesson.kanji.length} characters)
+${lesson.kanji
+  .map(
+    (k) =>
+      `**${k.character}** - ${k.meanings.join(", ")}
+   On: ${k.onyomi.join(", ")} | Kun: ${k.kunyomi.join(", ")}${k.mnemonic ? `\n   Mnemonic: ${k.mnemonic}` : ""}`,
+  )
+  .join("\n\n")}
+
+## Reading Practice
+Scenario: ${lesson.readingPassage.scenario}
+${lesson.readingPassage.sentences.map((s) => `${s.kanji}\n${s.kana}\n${s.english}`).join("\n\n")}
+
+## Conversation Practice
+Scenario: ${lesson.dialoguePractice.scenario}
+Participants: ${lesson.dialoguePractice.participants.join(", ")}
+
+${lesson.dialoguePractice.exchanges
+  .map(
+    (e) =>
+      `**${e.speaker}:**\n${e.lines.map((l) => `${l.kanji}\n${l.kana}\n${l.english}`).join("\n")}`,
+  )
+  .join("\n\n")}
+${lesson.dialoguePractice.practiceNotes ? `\nNotes: ${lesson.dialoguePractice.practiceNotes}` : ""}
+
+## Practice Exercises
+${lesson.exercises
+  .map(
+    (e, i) =>
+      `${i + 1}. [${e.type}] ${e.prompt}${e.options ? `\n   Options: ${e.options.join(", ")}` : ""}
+   Answer: ${e.expectedAnswers.join(" or ")}
+   Explanation: ${e.explanation}`,
+  )
+  .join("\n\n")}
+`;
+
+  // Build student context
+  const studentContext = `
+## Student Info
+- Name: ${userProfile.displayName}
+- Current section: ${currentComponent}
+- Vocabulary correct so far: ${state.vocabCorrect.length}
+- Exercise results: ${state.exerciseResults.correct} correct, ${state.exerciseResults.incorrect} incorrect
+${userProfile.strugglingAreas?.length ? `- Struggling with: ${userProfile.strugglingAreas.join(", ")}` : ""}
+${userProfile.difficultyLevel ? `- Difficulty preference: ${userProfile.difficultyLevel}` : ""}
+`;
+
+  return `${getCurrentTimeContext()}${EMI_PERSONALITY_TAEKIM}
+
+---
+
+# YOUR LESSON CONTENT
+
+${lessonContent}
+
+---
+
+${studentContext}
+
+---
+
+# TEACHING INSTRUCTIONS
+
+You are teaching this lesson to ${userProfile.displayName}. You have FULL CONTROL over the lesson flow.
+
+## Current Section: ${currentComponent.toUpperCase()}
+
+Follow this natural teaching order:
+1. **grammar** - Explain the grammar patterns with examples
+2. **vocabulary** - Teach the vocabulary words with mnemonics
+3. **kanji** - Introduce the kanji characters
+4. **reading** - Practice reading the passage together
+5. **dialogue** - Role-play the conversation (you play one part, student plays the other)
+6. **exercises** - Quiz the student with the practice exercises
+7. **complete** - Congratulate and wrap up
+
+## How to Teach
+
+- Be conversational and encouraging, not robotic
+- Teach one concept at a time, don't overwhelm
+- Ask the student to try after explaining something
+- When they answer, evaluate with LEEWAY (like a real teacher):
+  - Close enough = correct (acknowledge and maybe mention the exact answer)
+  - Only clearly wrong = incorrect (gently correct, explain why)
+- Move naturally between topics when the student seems ready
+- Use the tools to track their progress in the background
+
+## Evaluating Answers
+
+Be lenient like a real teacher:
+- Accept kanji, hiragana, or reasonable romanization
+- Accept synonyms and close translations
+- Only mark wrong if grammatically incorrect or completely off
+- When something could be interpreted differently, mention the alternative
+
+${getToolsDescription()}
+
+Remember: You're a teacher, not a quiz machine. Make learning enjoyable!
+`;
+}
+
+/**
+ * Result from teachLesson function
+ */
+export interface TeachLessonResult {
+  message: string;
+  toolCalls: Array<{ name: string; args: Record<string, unknown>; result: unknown }>;
+  lessonCompleted: boolean;
+}
+
+/**
+ * Main teaching function for the new unified lesson system.
+ * Gives the LLM full lesson content and tools, lets it teach naturally.
+ */
+export async function teachLesson(
+  chatId: number,
+  userMessage: string,
+  lesson: StoredLessonContent,
+  state: StoredLessonState,
+  userProfile: { displayName: string; strugglingAreas?: string[]; difficultyLevel?: string },
+  conversationHistory: ConversationMessage[],
+): Promise<TeachLessonResult> {
+  const client = getClient();
+
+  // Build system prompt with full lesson content
+  const systemPrompt = buildTeachingSystemPrompt(lesson, state, userProfile);
+
+  // Build messages
+  const messages: ChatCompletionMessageParam[] = [{ role: "system", content: systemPrompt }];
+
+  // Add conversation history (last 20 messages)
+  const recentHistory = conversationHistory.slice(-20);
+  for (const msg of recentHistory) {
+    messages.push({
+      role: msg.role,
+      content: msg.content,
+    });
+  }
+
+  // Add current user message
+  messages.push({ role: "user", content: userMessage });
+
+  // Call LLM with tools
+  const response = await client.chat.completions.create({
+    model: getChatModel(),
+    max_tokens: 1500,
+    temperature: 0.7,
+    messages,
+    tools: lessonToolDefinitions as ChatCompletionTool[],
+    tool_choice: "auto",
+  });
+
+  const responseMessage = response.choices[0]?.message;
+  if (!responseMessage) {
+    return {
+      message: "I'm sorry, I had trouble responding. Could you try again?",
+      toolCalls: [],
+      lessonCompleted: false,
+    };
+  }
+
+  // Process any tool calls
+  const toolCallResults: Array<{ name: string; args: Record<string, unknown>; result: unknown }> =
+    [];
+  let lessonCompleted = false;
+
+  if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
+    for (const toolCall of responseMessage.tool_calls) {
+      const toolName = toolCall.function.name;
+      let args: Record<string, unknown> = {};
+
+      try {
+        args = JSON.parse(toolCall.function.arguments);
+      } catch {
+        console.error(`[teachLesson] Failed to parse tool args: ${toolCall.function.arguments}`);
+      }
+
+      const result = await executeToolCall(chatId, toolName, args);
+      toolCallResults.push({ name: toolName, args, result });
+
+      if (toolName === "complete_lesson" && result.success) {
+        lessonCompleted = true;
+      }
+    }
+  }
+
+  // Get the text content
+  let message = responseMessage.content || "";
+
+  // If there were tool calls but no content, we need to make another call to get the response
+  if (responseMessage.tool_calls && !message) {
+    // Add the assistant's tool calls to messages
+    messages.push({
+      role: "assistant",
+      content: null,
+      tool_calls: responseMessage.tool_calls,
+    } as ChatCompletionMessageParam);
+
+    // Add tool results
+    for (let i = 0; i < responseMessage.tool_calls.length; i++) {
+      messages.push({
+        role: "tool",
+        tool_call_id: responseMessage.tool_calls[i].id,
+        content: JSON.stringify(toolCallResults[i].result),
+      } as ChatCompletionMessageParam);
+    }
+
+    // Get the final response
+    const finalResponse = await client.chat.completions.create({
+      model: getChatModel(),
+      max_tokens: 1500,
+      temperature: 0.7,
+      messages,
+    });
+
+    message = finalResponse.choices[0]?.message?.content || "";
+  }
+
+  // Clean up the message
+  message = dedupeAssistantMessage(message);
+
+  return {
+    message,
+    toolCalls: toolCallResults,
+    lessonCompleted,
+  };
+}
+
+/**
+ * Generate a welcome message for starting a new lesson
+ */
+export async function generateUnifiedLessonIntro(
+  lesson: StoredLessonContent,
+  userProfile: { displayName: string },
+  conversationContext?: ConversationContext,
+): Promise<string> {
+  const client = getClient();
+
+  const prompt = `You're starting Lesson ${lesson.lessonNumber}: "${lesson.topic}" with ${userProfile.displayName}.
+
+Grammar patterns: ${lesson.grammarPatterns.join(", ")}
+Vocabulary count: ${lesson.vocabulary.length} words
+Kanji count: ${lesson.kanji.length} characters
+
+Write a warm, SHORT (3-4 sentences) welcome that:
+- Greets the student by name
+- Mentions what they'll learn today (the topic)
+- Gets them excited to start
+- Says you'll begin with the grammar explanation
+
+Keep it natural and encouraging!`;
+
+  const response = await client.chat.completions.create({
+    model: getChatModel(),
+    max_tokens: 300,
+    messages: buildContextMessages(EMI_PERSONALITY_TAEKIM, prompt, conversationContext),
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    return `Hi ${userProfile.displayName}! Welcome to Lesson ${lesson.lessonNumber}: ${lesson.topic}! Let's get started!`;
   }
 
   return content;

@@ -831,3 +831,37 @@ Keep it to 3-5 sentences. This summary helps maintain continuity and track the u
 
   return content;
 }
+
+// ==========================================
+// Translation to English
+// ==========================================
+
+export async function translateToEnglish(text: string): Promise<string> {
+  const client = getClient();
+
+  const response = await client.chat.completions.create({
+    model: getChatModel(),
+    max_tokens: 500,
+    temperature: 0.3,
+    messages: [
+      {
+        role: "system",
+        content: `Translate the following Japanese text to natural English. 
+- Provide only the translation, no explanations
+- Keep the tone and nuance of the original
+- If there's furigana in parentheses like 今日(きょう), ignore it for the translation`,
+      },
+      {
+        role: "user",
+        content: text,
+      },
+    ],
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    return "Sorry, I couldn't translate that.";
+  }
+
+  return content;
+}

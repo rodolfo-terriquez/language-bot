@@ -14,6 +14,7 @@ import {
   addEmiMemoryFact,
   updateEmiMemoryFact,
   deleteEmiMemoryFact,
+  filterCommandMessages,
 } from "../lib/redis.js";
 import { generateProactiveCheckIn, type ConversationContext } from "../lib/llm.js";
 import { sendMessage } from "../lib/telegram.js";
@@ -84,9 +85,9 @@ async function handleProactiveCheckIn(chatId: number): Promise<void> {
     return;
   }
 
-  // Build conversation context
+  // Build conversation context (filter out command messages)
   const context: ConversationContext = {
-    messages: conversationData.messages,
+    messages: filterCommandMessages(conversationData.messages),
     summary: conversationData.summary,
     memory,
     emiMemory,

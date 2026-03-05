@@ -215,15 +215,18 @@ Just start chatting in Japanese (or English if you prefer), and I'll match your 
       redis.getEmiMemory(),
     ]);
 
+    // Filter out command messages from history for cleaner context
+    const filteredMessages = redis.filterCommandMessages(conversationData.messages);
+
     const context: ConversationContext = {
-      messages: conversationData.messages,
+      messages: filteredMessages,
       summary: conversationData.summary,
       memory,
       emiMemory,
     };
 
     // Parse intent (simplified - mostly just conversation)
-    const intent = await parseIntent(userText, conversationData.messages);
+    const intent = await parseIntent(userText, filteredMessages);
     console.log(`[${chatId}] Intent: ${intent.type}`);
 
     // Generate response

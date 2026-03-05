@@ -138,6 +138,34 @@ export async function getConversationHistory(chatId: number): Promise<Conversati
   return data.messages;
 }
 
+/**
+ * Filter out command messages and their responses from conversation history.
+ * This keeps the context clean for LLM calls.
+ */
+export function filterCommandMessages(messages: ConversationMessage[]): ConversationMessage[] {
+  const filtered: ConversationMessage[] = [];
+  
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
+    
+    // Skip user messages that are commands
+    if (msg.role === "user") {
+      const text = msg.content.trim().toLowerCase();
+      if (text.startsWith("/") || text === "[emi initiated conversation]") {
+        // Also skip the next message if it's the assistant's response to this command
+        if (i + 1 < messages.length && messages[i + 1].role === "assistant") {
+          i++; // Skip the assistant response too
+        }
+        continue;
+      }
+    }
+    
+    filtered.push(msg);
+  }
+  
+  return filtered;
+}
+
 // Callback for triggering summarization (set by the caller to avoid circular imports)
 let summarizationCallback:
   | ((messages: ConversationMessage[], existingSummary?: string) => Promise<string>)

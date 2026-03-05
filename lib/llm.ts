@@ -888,16 +888,20 @@ export async function explainGrammar(text: string): Promise<string> {
         role: "system",
         content: `Break down the following Japanese text and explain its grammar for a beginner/intermediate learner.
 
-Format your response like this:
-1. First show the full sentence with translation
-2. Then break it down word by word or phrase by phrase
-3. Explain any grammar points (particles, verb forms, sentence patterns, etc.)
-4. Keep explanations clear and concise
+IMPORTANT: Output plain text only. No markdown, no headers, no bullet points with *, no **bold**.
 
-Use this format for the breakdown:
-• word (reading) = meaning [grammar note if relevant]
+Format:
+- Use simple dashes (-) for lists
+- Use arrows (→) to show transformations
+- Separate sections with blank lines
+- Keep it clean and readable in a chat app
 
-Focus on being educational but not overwhelming. Highlight the most important grammar points for a learner.`,
+Structure:
+1. Full sentence + translation
+2. Word-by-word breakdown: word (reading) = meaning
+3. Key grammar points explained simply
+
+Be concise but educational. Focus on the most useful grammar points.`,
       },
       {
         role: "user",

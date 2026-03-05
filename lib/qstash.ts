@@ -8,6 +8,8 @@ function getClient(): Client {
     if (!token) {
       throw new Error("QSTASH_TOKEN is not set");
     }
+    // Debug: log first 10 chars of token to verify it's correct
+    console.log(`[QStash] Initializing client with token: ${token.substring(0, 10)}...`);
     qstashClient = new Client({ token });
   }
   return qstashClient;

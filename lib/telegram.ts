@@ -71,6 +71,34 @@ export async function sendMessage(chatId: number, text: string): Promise<void> {
   try { await setLastAssistantMessage(chatId, text); } catch {}
 }
 
+export async function sendSpoilerMessage(chatId: number, text: string): Promise<void> {
+  const token = getToken();
+  console.log(`[Telegram] Sending spoiler message to ${chatId}, length: ${text.length}`);
+
+  // Escape HTML special characters and wrap in spoiler
+  const escaped = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  const spoilerText = `<tg-spoiler>${escaped}</tg-spoiler>`;
+
+  const response = await fetch(`${TELEGRAM_API}${token}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text: spoilerText,
+      parse_mode: "HTML",
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to send spoiler message: ${errorText}`);
+  }
+  console.log(`[Telegram] Spoiler message sent successfully`);
+}
+
 export async function getFilePath(fileId: string): Promise<string> {
   const token = getToken();
   const response = await fetch(`${TELEGRAM_API}${token}/getFile`, {

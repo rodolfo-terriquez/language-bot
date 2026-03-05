@@ -7,6 +7,7 @@ import {
   generateConversationResponse,
   generateConversationSummary,
   translateToEnglish,
+  explainGrammar,
   ConversationContext,
   MemoryToolCall,
 } from "../lib/llm.js";
@@ -207,6 +208,13 @@ Just start chatting in Japanese (or English if you prefer), and I'll match your 
       return;
     }
 
+    // Handle /exp command (explain grammar of last message)
+    if (userText.trim().toLowerCase() === "/exp") {
+      await handleExplainCommand(chatId);
+      res.status(200).json({ ok: true });
+      return;
+    }
+
     // Get conversation context and memory
     const [conversationData, profile, memory, emiMemory] = await Promise.all([
       redis.getConversationData(chatId),
@@ -296,6 +304,23 @@ async function handleTranslateCommand(chatId: number): Promise<void> {
 
   const translation = await translateToEnglish(lastAssistantMessage.content);
   await telegram.sendMessage(chatId, `_${translation}_`);
+}
+
+async function handleExplainCommand(chatId: number): Promise<void> {
+  // Get conversation history to find the last assistant message
+  const conversationData = await redis.getConversationData(chatId);
+  const messages = conversationData.messages;
+
+  // Find the last assistant message
+  const lastAssistantMessage = [...messages].reverse().find((m) => m.role === "assistant");
+
+  if (!lastAssistantMessage) {
+    await telegram.sendMessage(chatId, "No previous message to explain.");
+    return;
+  }
+
+  const explanation = await explainGrammar(lastAssistantMessage.content);
+  await telegram.sendMessage(chatId, explanation);
 }
 
 async function handleCheckInCommand(

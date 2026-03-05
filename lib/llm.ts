@@ -871,3 +871,45 @@ export async function translateToEnglish(text: string): Promise<string> {
 
   return content;
 }
+
+// ==========================================
+// Grammar Explanation
+// ==========================================
+
+export async function explainGrammar(text: string): Promise<string> {
+  const client = getClient();
+
+  const response = await client.chat.completions.create({
+    model: getChatModel(),
+    max_tokens: 1000,
+    temperature: 0.3,
+    messages: [
+      {
+        role: "system",
+        content: `Break down the following Japanese text and explain its grammar for a beginner/intermediate learner.
+
+Format your response like this:
+1. First show the full sentence with translation
+2. Then break it down word by word or phrase by phrase
+3. Explain any grammar points (particles, verb forms, sentence patterns, etc.)
+4. Keep explanations clear and concise
+
+Use this format for the breakdown:
+• word (reading) = meaning [grammar note if relevant]
+
+Focus on being educational but not overwhelming. Highlight the most important grammar points for a learner.`,
+      },
+      {
+        role: "user",
+        content: text,
+      },
+    ],
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    return "Sorry, I couldn't explain that.";
+  }
+
+  return content;
+}

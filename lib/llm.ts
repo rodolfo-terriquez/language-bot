@@ -619,6 +619,166 @@ ${context.summary}`;
 // Conversation Summary Generation
 // ==========================================
 
+// ==========================================
+// Proactive Check-in Message Generation
+// ==========================================
+
+const PROACTIVE_CHECKIN_PROMPT = `You are Emi, and you're reaching out to the user unprompted to say hi or continue a conversation.
+
+## Context
+This is a PROACTIVE message - you're initiating contact, not responding to the user. You want to:
+1. Feel natural and not robotic - like a friend texting out of the blue
+2. Either follow up on something from your previous conversations, OR bring up something random/interesting
+3. Encourage them to respond and practice their Japanese
+
+## Guidelines
+- Keep it SHORT (1-3 sentences max) - this is a casual check-in, not a lesson
+- Write primarily in Japanese with furigana for kanji: 今日(きょう)
+- Be playful and show your puppygirl personality naturally
+- Don't be overly formal or stiff
+- Sometimes ask a question, sometimes share something interesting
+- Vary your approach - don't always start the same way
+
+## Message Types (vary these!)
+- Follow up on something they mentioned before
+- Share something you "noticed" or "thought about"
+- Ask about their day/plans
+- Bring up a topic you think they'd enjoy
+- React to the time of day (morning greeting, evening check-in, etc.)
+- Share a fun Japanese word or expression
+
+## Important
+- Do NOT explain that you're checking in or that this is a scheduled message
+- Just BE natural, like you genuinely wanted to talk to them
+- Show genuine curiosity and warmth
+`;
+
+export async function generateProactiveCheckIn(
+  context: ConversationContext,
+  userLevel: "beginner" | "intermediate" | "advanced" = "beginner",
+): Promise<ConversationResult> {
+  const client = getClient();
+
+  let systemPrompt = getCurrentTimeContext() + PROACTIVE_CHECKIN_PROMPT;
+
+  // Add level context
+  systemPrompt += `\n\n## User's Level: ${userLevel.toUpperCase()}
+Adjust your Japanese usage accordingly.`;
+
+  // Add Emi's self-memory if available
+  if (context.emiMemory) {
+    systemPrompt += formatEmiMemoryForContext(context.emiMemory);
+  }
+
+  // Add long-term memory about user if available
+  if (context.memory) {
+    systemPrompt += formatMemoryForContext(context.memory);
+  }
+
+  // Add conversation summary if available
+  if (context.summary) {
+    systemPrompt += `\n\n## Recent Conversation Context
+${context.summary}`;
+  }
+
+  const messages: ChatCompletionMessageParam[] = [{ role: "system", content: systemPrompt }];
+
+  // Add some recent conversation history for context (but not too much)
+  const recentHistory = context.messages.slice(-10);
+  for (const msg of recentHistory) {
+    messages.push({
+      role: msg.role,
+      content: msg.content,
+    });
+  }
+
+  // Add a prompt to generate the proactive message
+  messages.push({
+    role: "user",
+    content:
+      "[SYSTEM: Generate a proactive check-in message to send to the user. Remember to be natural and casual!]",
+  });
+
+  const response = await client.chat.completions.create({
+    model: getChatModel(),
+    max_tokens: 300,
+    temperature: 0.9, // Higher temperature for more variety
+    messages,
+    tools: MEMORY_TOOLS,
+    tool_choice: "auto",
+  });
+
+  const choice = response.choices[0];
+  const message = choice?.message;
+
+  // Extract any memory tool calls
+  const memoryToolCalls: MemoryToolCall[] = [];
+  if (message?.tool_calls) {
+    for (const toolCall of message.tool_calls) {
+      if (
+        toolCall.function.name === "add_memory" ||
+        toolCall.function.name === "update_memory" ||
+        toolCall.function.name === "delete_memory" ||
+        toolCall.function.name === "add_emi_memory" ||
+        toolCall.function.name === "update_emi_memory" ||
+        toolCall.function.name === "delete_emi_memory"
+      ) {
+        try {
+          const args = JSON.parse(toolCall.function.arguments);
+          memoryToolCalls.push({
+            name: toolCall.function.name,
+            arguments: args,
+          });
+        } catch (e) {
+          console.error("Failed to parse tool call arguments:", e);
+        }
+      }
+    }
+  }
+
+  // Get the response content
+  let content = message?.content || "";
+
+  // If the model only made tool calls without a response, get the actual response
+  if (!content && memoryToolCalls.length > 0) {
+    const toolCallMessages: ChatCompletionMessageParam[] = [
+      ...messages,
+      message as ChatCompletionMessageParam,
+    ];
+
+    for (const toolCall of message?.tool_calls || []) {
+      toolCallMessages.push({
+        role: "tool",
+        tool_call_id: toolCall.id,
+        content: "Memory updated successfully.",
+      });
+    }
+
+    const followUp = await client.chat.completions.create({
+      model: getChatModel(),
+      max_tokens: 300,
+      temperature: 0.9,
+      messages: toolCallMessages,
+    });
+
+    content = followUp.choices[0]?.message?.content || "";
+  }
+
+  if (!content) {
+    // Fallback message if generation fails
+    content = "ねえねえ！元気(げんき)？何(なに)してる？";
+  }
+
+  return {
+    response: content,
+    memoryToolCalls,
+  };
+}
+
+// ==========================================
+// Conversation Summary Generation
+// ==========================================
+
 export async function generateConversationSummary(
   messages: ConversationMessage[],
   existingSummary?: string,

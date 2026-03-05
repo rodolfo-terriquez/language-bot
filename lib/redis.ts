@@ -7,6 +7,7 @@ import type {
   MemoryFact,
   EmiMemory,
   EmiMemoryFact,
+  ProactiveSchedule,
 } from "./types.js";
 
 let redisClient: Redis | null = null;
@@ -374,4 +375,84 @@ export async function deleteEmiMemoryFact(factId: string): Promise<boolean> {
   memory.facts.splice(index, 1);
   await saveEmiMemory(memory);
   return true;
+}
+
+// ==========================================
+// Proactive Check-in Schedule Operations
+// ==========================================
+
+const PROACTIVE_SCHEDULE_KEY = (chatId: number) => `${getKeyPrefix()}proactive_schedule:${chatId}`;
+
+export async function getProactiveSchedule(chatId: number): Promise<ProactiveSchedule | null> {
+  const redis = getClient();
+  const data = await redis.get<string>(PROACTIVE_SCHEDULE_KEY(chatId));
+
+  if (!data) return null;
+
+  try {
+    const parsed = typeof data === "string" ? JSON.parse(data) : data;
+    return parsed as ProactiveSchedule;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveProactiveSchedule(schedule: ProactiveSchedule): Promise<void> {
+  const redis = getClient();
+  schedule.updatedAt = Date.now();
+  await redis.set(PROACTIVE_SCHEDULE_KEY(schedule.chatId), JSON.stringify(schedule));
+}
+
+export async function createProactiveSchedule(
+  chatId: number,
+  qstashMessageId: string,
+  scheduledFor: number,
+  options?: {
+    earliestHour?: number;
+    latestHour?: number;
+    timezone?: string;
+  },
+): Promise<ProactiveSchedule> {
+  const now = Date.now();
+  const schedule: ProactiveSchedule = {
+    chatId,
+    qstashMessageId,
+    scheduledFor,
+    enabled: true,
+    earliestHour: options?.earliestHour ?? 9,
+    latestHour: options?.latestHour ?? 21,
+    timezone: options?.timezone || process.env.USER_TIMEZONE || "America/Mexico_City",
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await saveProactiveSchedule(schedule);
+  return schedule;
+}
+
+export async function updateProactiveScheduleAfterCheckIn(
+  chatId: number,
+  newQstashMessageId: string,
+  newScheduledFor: number,
+): Promise<void> {
+  const schedule = await getProactiveSchedule(chatId);
+  if (!schedule) return;
+
+  schedule.qstashMessageId = newQstashMessageId;
+  schedule.scheduledFor = newScheduledFor;
+  schedule.lastCheckIn = Date.now();
+  await saveProactiveSchedule(schedule);
+}
+
+export async function disableProactiveSchedule(chatId: number): Promise<void> {
+  const schedule = await getProactiveSchedule(chatId);
+  if (!schedule) return;
+
+  schedule.enabled = false;
+  await saveProactiveSchedule(schedule);
+}
+
+export async function deleteProactiveSchedule(chatId: number): Promise<void> {
+  const redis = getClient();
+  await redis.del(PROACTIVE_SCHEDULE_KEY(chatId));
 }

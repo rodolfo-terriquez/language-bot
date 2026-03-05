@@ -129,3 +129,29 @@ export interface FreeConversationIntent {
 export interface DebugContextIntent {
   type: "debug_context";
 }
+
+// ==========================================
+// Proactive Check-in Schedule
+// ==========================================
+
+export interface ProactiveSchedule {
+  chatId: number;
+  /** QStash message ID for the next scheduled check-in */
+  qstashMessageId: string;
+  /** When the next check-in is scheduled (Unix timestamp) */
+  scheduledFor: number;
+  /** Whether proactive check-ins are enabled */
+  enabled: boolean;
+  /** Earliest hour (0-23) for check-ins */
+  earliestHour: number;
+  /** Latest hour (0-23) for check-ins */
+  latestHour: number;
+  /** User's timezone */
+  timezone: string;
+  /** Last check-in timestamp */
+  lastCheckIn?: number;
+  /** When this schedule was created */
+  createdAt: number;
+  /** When this schedule was last updated */
+  updatedAt: number;
+}

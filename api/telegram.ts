@@ -10,6 +10,7 @@ import {
   MemoryToolCall,
 } from "../lib/llm.js";
 import * as redis from "../lib/redis.js";
+import { scheduleProactiveCheckIn, cancelScheduledMessage } from "../lib/qstash.js";
 
 // Execute memory tool calls from the LLM response
 async function executeMemoryToolCalls(chatId: number, toolCalls: MemoryToolCall[]): Promise<void> {
@@ -186,6 +187,18 @@ Just start chatting in Japanese (or English if you prefer), and I'll match your 
       return;
     }
 
+    // Handle /checkin commands
+    const checkinMatch = userText
+      .trim()
+      .toLowerCase()
+      .match(/^\/checkin\s*(on|off|status)?$/);
+    if (checkinMatch) {
+      const action = checkinMatch[1] || "status";
+      await handleCheckInCommand(chatId, action as "on" | "off" | "status");
+      res.status(200).json({ ok: true });
+      return;
+    }
+
     // Get conversation context and memory
     const [conversationData, profile, memory, emiMemory] = await Promise.all([
       redis.getConversationData(chatId),
@@ -257,12 +270,131 @@ async function handleResetCommand(chatId: number, type: "all" | "context"): Prom
   }
 }
 
+async function handleCheckInCommand(
+  chatId: number,
+  action: "on" | "off" | "status",
+): Promise<void> {
+  const schedule = await redis.getProactiveSchedule(chatId);
+
+  if (action === "status") {
+    if (!schedule || !schedule.enabled) {
+      await telegram.sendMessage(
+        chatId,
+        `Proactive check-ins are currently *OFF*.
+
+Use \`/checkin on\` to enable daily messages from me! I'll reach out once a day at a random time between ${schedule?.earliestHour || 9}:00 and ${schedule?.latestHour || 21}:00 to chat.`,
+      );
+    } else {
+      const nextTime = new Date(schedule.scheduledFor).toLocaleString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: schedule.timezone,
+      });
+      await telegram.sendMessage(
+        chatId,
+        `Proactive check-ins are *ON*!
+
+Next check-in: ${nextTime}
+Time window: ${schedule.earliestHour}:00 - ${schedule.latestHour}:00
+Timezone: ${schedule.timezone}
+
+Use \`/checkin off\` to disable.`,
+      );
+    }
+    return;
+  }
+
+  if (action === "on") {
+    // Check if already enabled
+    if (schedule?.enabled) {
+      const nextTime = new Date(schedule.scheduledFor).toLocaleString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: schedule.timezone,
+      });
+      await telegram.sendMessage(
+        chatId,
+        `Check-ins are already enabled! I'll message you around ${nextTime}.`,
+      );
+      return;
+    }
+
+    // Schedule the first check-in
+    try {
+      const timezone = process.env.USER_TIMEZONE || "America/Mexico_City";
+      const checkIn = await scheduleProactiveCheckIn({
+        chatId,
+        timezone,
+      });
+
+      await redis.createProactiveSchedule(chatId, checkIn.messageId, checkIn.scheduledFor, {
+        timezone,
+      });
+
+      const nextTime = new Date(checkIn.scheduledFor).toLocaleString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: timezone,
+      });
+
+      await telegram.sendMessage(
+        chatId,
+        `Yay! Check-ins enabled! 🐕
+
+I'll message you once a day at a random time. My first check-in will be around ${nextTime}.
+
+Looking forward to chatting with you! わくわく！`,
+      );
+    } catch (error) {
+      console.error(`[${chatId}] Failed to enable check-ins:`, error);
+      await telegram.sendMessage(chatId, "Sorry, I couldn't enable check-ins. Please try again.");
+    }
+    return;
+  }
+
+  if (action === "off") {
+    if (!schedule || !schedule.enabled) {
+      await telegram.sendMessage(chatId, "Check-ins are already disabled.");
+      return;
+    }
+
+    // Cancel the scheduled message and disable
+    try {
+      await cancelScheduledMessage(schedule.qstashMessageId);
+    } catch {
+      // Message might have already been processed
+    }
+
+    await redis.disableProactiveSchedule(chatId);
+
+    await telegram.sendMessage(
+      chatId,
+      `Check-ins disabled. I won't message you unprompted anymore.
+
+Use \`/checkin on\` if you change your mind! いつでも待ってるよ！`,
+    );
+  }
+}
+
 async function handleDebugCommand(chatId: number): Promise<void> {
-  const [profile, conversationData, memory, emiMemory] = await Promise.all([
+  const [profile, conversationData, memory, emiMemory, proactiveSchedule] = await Promise.all([
     redis.getUserProfile(chatId),
     redis.getConversationData(chatId),
     redis.getLongTermMemory(chatId),
     redis.getEmiMemory(),
+    redis.getProactiveSchedule(chatId),
   ]);
 
   const debugInfo = {
@@ -294,6 +426,19 @@ async function handleDebugCommand(chatId: number): Promise<void> {
         content: f.content,
       })),
     },
+    proactiveCheckIns: proactiveSchedule
+      ? {
+          enabled: proactiveSchedule.enabled,
+          nextCheckIn: proactiveSchedule.enabled
+            ? new Date(proactiveSchedule.scheduledFor).toISOString()
+            : null,
+          timeWindow: `${proactiveSchedule.earliestHour}:00 - ${proactiveSchedule.latestHour}:00`,
+          timezone: proactiveSchedule.timezone,
+          lastCheckIn: proactiveSchedule.lastCheckIn
+            ? new Date(proactiveSchedule.lastCheckIn).toISOString()
+            : null,
+        }
+      : { enabled: false },
   };
 
   await telegram.sendMessage(

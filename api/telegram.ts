@@ -359,7 +359,11 @@ Looking forward to chatting with you! わくわく！`,
       );
     } catch (error) {
       console.error(`[${chatId}] Failed to enable check-ins:`, error);
-      await telegram.sendMessage(chatId, "Sorry, I couldn't enable check-ins. Please try again.");
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      await telegram.sendMessage(
+        chatId,
+        `Sorry, I couldn't enable check-ins: ${errorMsg}`,
+      );
     }
     return;
   }

@@ -303,8 +303,7 @@ async function handleTranslateCommand(chatId: number): Promise<void> {
   }
 
   const translation = await translateToEnglish(lastAssistantMessage.content);
-  // Send as spoiler so user can try to understand first, then tap to reveal
-  await telegram.sendSpoilerMessage(chatId, translation);
+  await telegram.sendMessage(chatId, translation);
 }
 
 async function handleExplainCommand(chatId: number): Promise<void> {
@@ -321,8 +320,7 @@ async function handleExplainCommand(chatId: number): Promise<void> {
   }
 
   const explanation = await explainGrammar(lastAssistantMessage.content);
-  // Send as spoiler to keep chat clean - tap to expand
-  await telegram.sendSpoilerMessage(chatId, explanation);
+  await telegram.sendMessage(chatId, explanation);
 }
 
 async function handleCheckInCommand(

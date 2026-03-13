@@ -137,9 +137,9 @@ export interface DebugContextIntent {
 export interface ProactiveSchedule {
   chatId: number;
   /** QStash message ID for the next scheduled check-in */
-  qstashMessageId: string;
+  qstashMessageId?: string;
   /** When the next check-in is scheduled (Unix timestamp) */
-  scheduledFor: number;
+  scheduledFor?: number;
   /** Whether proactive check-ins are enabled */
   enabled: boolean;
   /** Earliest hour (0-23) for check-ins */
@@ -148,6 +148,14 @@ export interface ProactiveSchedule {
   latestHour: number;
   /** User's timezone */
   timezone: string;
+  /** Consecutive proactive messages sent without a user reply */
+  consecutiveUnansweredCheckIns: number;
+  /** Whether the latest proactive message still needs a user reply */
+  awaitingUserReply: boolean;
+  /** Whether check-ins are paused until the user sends a normal message */
+  pausedUntilUserReply: boolean;
+  /** Timestamp of the last proactive message that was sent */
+  lastProactiveMessageAt?: number;
   /** Last check-in timestamp */
   lastCheckIn?: number;
   /** When this schedule was created */

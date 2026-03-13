@@ -255,6 +255,8 @@ Just start chatting in Japanese (or English if you prefer), and I'll match your 
     // Save to conversation history
     await redis.addToConversation(chatId, userText, result.response);
 
+    await resumeProactiveCheckInsAfterUserReply(chatId);
+
     res.status(200).json({ ok: true });
   } catch (error) {
     console.error("Webhook error:", error);
@@ -338,20 +340,14 @@ async function handleCheckInCommand(
 Use \`/checkin on\` to enable daily messages from me! I'll reach out once a day at a random time between ${schedule?.earliestHour || 9}:00 and ${schedule?.latestHour || 21}:00 to chat.`,
       );
     } else {
-      const nextTime = new Date(schedule.scheduledFor).toLocaleString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-        timeZone: schedule.timezone,
-      });
+      const nextCheckInLine = schedule.scheduledFor
+        ? `Next check-in: ${formatScheduledTime(schedule.scheduledFor, schedule.timezone)}`
+        : "Next check-in: waiting for your next reply before scheduling again";
       await telegram.sendMessage(
         chatId,
         `Proactive check-ins are *ON*!
 
-Next check-in: ${nextTime}
+${nextCheckInLine}
 Time window: ${schedule.earliestHour}:00 - ${schedule.latestHour}:00
 Timezone: ${schedule.timezone}
 
@@ -364,18 +360,11 @@ Use \`/checkin off\` to disable.`,
   if (action === "on") {
     // Check if already enabled
     if (schedule?.enabled) {
-      const nextTime = new Date(schedule.scheduledFor).toLocaleString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-        timeZone: schedule.timezone,
-      });
       await telegram.sendMessage(
         chatId,
-        `Check-ins are already enabled! I'll message you around ${nextTime}.`,
+        schedule.scheduledFor
+          ? `Check-ins are already enabled! I'll message you around ${formatScheduledTime(schedule.scheduledFor, schedule.timezone)}.`
+          : "Check-ins are already enabled, but they're paused until you send a normal message.",
       );
       return;
     }
@@ -428,10 +417,12 @@ Looking forward to chatting with you! わくわく！`,
     }
 
     // Cancel the scheduled message and disable
-    try {
-      await cancelScheduledMessage(schedule.qstashMessageId);
-    } catch {
-      // Message might have already been processed
+    if (schedule.qstashMessageId) {
+      try {
+        await cancelScheduledMessage(schedule.qstashMessageId);
+      } catch {
+        // Message might have already been processed
+      }
     }
 
     await redis.disableProactiveSchedule(chatId);
@@ -486,11 +477,18 @@ async function handleDebugCommand(chatId: number): Promise<void> {
     proactiveCheckIns: proactiveSchedule
       ? {
           enabled: proactiveSchedule.enabled,
-          nextCheckIn: proactiveSchedule.enabled
-            ? new Date(proactiveSchedule.scheduledFor).toISOString()
-            : null,
+          nextCheckIn:
+            proactiveSchedule.enabled && proactiveSchedule.scheduledFor
+              ? new Date(proactiveSchedule.scheduledFor).toISOString()
+              : null,
           timeWindow: `${proactiveSchedule.earliestHour}:00 - ${proactiveSchedule.latestHour}:00`,
           timezone: proactiveSchedule.timezone,
+          consecutiveUnansweredCheckIns: proactiveSchedule.consecutiveUnansweredCheckIns,
+          awaitingUserReply: proactiveSchedule.awaitingUserReply,
+          pausedUntilUserReply: proactiveSchedule.pausedUntilUserReply,
+          lastProactiveMessageAt: proactiveSchedule.lastProactiveMessageAt
+            ? new Date(proactiveSchedule.lastProactiveMessageAt).toISOString()
+            : null,
           lastCheckIn: proactiveSchedule.lastCheckIn
             ? new Date(proactiveSchedule.lastCheckIn).toISOString()
             : null,
@@ -502,4 +500,53 @@ async function handleDebugCommand(chatId: number): Promise<void> {
     chatId,
     `Debug:\n\`\`\`json\n${JSON.stringify(debugInfo, null, 2)}\n\`\`\``,
   );
+}
+
+function formatScheduledTime(timestamp: number, timezone: string): string {
+  return new Date(timestamp).toLocaleString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: timezone,
+  });
+}
+
+async function resumeProactiveCheckInsAfterUserReply(chatId: number): Promise<void> {
+  const schedule = await redis.getProactiveSchedule(chatId);
+  if (!schedule || !schedule.enabled) {
+    return;
+  }
+
+  if (schedule.pausedUntilUserReply) {
+    try {
+      const nextCheckIn = await scheduleProactiveCheckIn({
+        chatId,
+        earliestHour: schedule.earliestHour,
+        latestHour: schedule.latestHour,
+        timezone: schedule.timezone,
+      });
+
+      await redis.updateProactiveScheduleAfterResume(
+        chatId,
+        nextCheckIn.messageId,
+        nextCheckIn.scheduledFor,
+      );
+
+      console.log(
+        `[${chatId}] Resumed proactive check-ins for ${new Date(nextCheckIn.scheduledFor).toISOString()}`,
+      );
+    } catch (error) {
+      console.error(`[${chatId}] Failed to resume proactive check-ins:`, error);
+    }
+    return;
+  }
+
+  if (!schedule.awaitingUserReply) {
+    return;
+  }
+
+  await redis.resetProactiveScheduleReplyState(chatId);
 }

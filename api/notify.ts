@@ -3,6 +3,8 @@ import { verifySignature, scheduleProactiveCheckIn } from "../lib/qstash.js";
 import {
   getProactiveSchedule,
   updateProactiveScheduleAfterCheckIn,
+  resetProactiveScheduleReplyState,
+  pauseProactiveScheduleUntilReply,
   getConversationData,
   getLongTermMemory,
   getEmiMemory,
@@ -18,6 +20,7 @@ import {
 } from "../lib/redis.js";
 import { generateProactiveCheckIn, type ConversationContext } from "../lib/llm.js";
 import { sendMessage } from "../lib/telegram.js";
+import type { ConversationMessage } from "../lib/types.js";
 
 // Notification payload type
 interface NotificationPayload {
@@ -71,6 +74,10 @@ async function handleProactiveCheckIn(chatId: number): Promise<void> {
     console.log(`[Notify] Proactive check-ins disabled for chat ${chatId}, skipping`);
     return;
   }
+  if (schedule.pausedUntilUserReply) {
+    console.log(`[Notify] Proactive check-ins paused pending user reply for chat ${chatId}`);
+    return;
+  }
 
   // Load user context
   const [profile, conversationData, memory, emiMemory] = await Promise.all([
@@ -79,6 +86,25 @@ async function handleProactiveCheckIn(chatId: number): Promise<void> {
     getLongTermMemory(chatId),
     getEmiMemory(),
   ]);
+
+  if (
+    schedule.awaitingUserReply &&
+    schedule.lastProactiveMessageAt &&
+    hasUserReplySince(conversationData.messages, schedule.lastProactiveMessageAt)
+  ) {
+    await resetProactiveScheduleReplyState(chatId);
+    schedule.consecutiveUnansweredCheckIns = 0;
+    schedule.awaitingUserReply = false;
+    schedule.pausedUntilUserReply = false;
+  }
+
+  if (schedule.awaitingUserReply && schedule.consecutiveUnansweredCheckIns >= 2) {
+    await pauseProactiveScheduleUntilReply(chatId);
+    console.log(
+      `[Notify] Chat ${chatId} has not replied to the last proactive message, pausing further check-ins`,
+    );
+    return;
+  }
 
   if (!profile) {
     console.log(`[Notify] No profile found for chat ${chatId}, skipping check-in`);
@@ -178,4 +204,8 @@ async function handleProactiveCheckIn(chatId: number): Promise<void> {
   } catch (err) {
     console.error(`[Notify] Failed to schedule next check-in for chat ${chatId}:`, err);
   }
+}
+
+function hasUserReplySince(messages: ConversationMessage[], timestamp: number): boolean {
+  return messages.some((message) => message.role === "user" && message.timestamp > timestamp);
 }

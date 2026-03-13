@@ -419,7 +419,12 @@ export async function getProactiveSchedule(chatId: number): Promise<ProactiveSch
 
   try {
     const parsed = typeof data === "string" ? JSON.parse(data) : data;
-    return parsed as ProactiveSchedule;
+    return {
+      ...parsed,
+      consecutiveUnansweredCheckIns: parsed.consecutiveUnansweredCheckIns ?? 0,
+      awaitingUserReply: parsed.awaitingUserReply ?? false,
+      pausedUntilUserReply: parsed.pausedUntilUserReply ?? false,
+    } as ProactiveSchedule;
   } catch {
     return null;
   }
@@ -450,6 +455,9 @@ export async function createProactiveSchedule(
     earliestHour: options?.earliestHour ?? 9,
     latestHour: options?.latestHour ?? 21,
     timezone: options?.timezone || process.env.USER_TIMEZONE || "America/Mexico_City",
+    consecutiveUnansweredCheckIns: 0,
+    awaitingUserReply: false,
+    pausedUntilUserReply: false,
     createdAt: now,
     updatedAt: now,
   };
@@ -468,7 +476,47 @@ export async function updateProactiveScheduleAfterCheckIn(
 
   schedule.qstashMessageId = newQstashMessageId;
   schedule.scheduledFor = newScheduledFor;
+  schedule.consecutiveUnansweredCheckIns += 1;
+  schedule.awaitingUserReply = true;
+  schedule.pausedUntilUserReply = false;
+  schedule.lastProactiveMessageAt = Date.now();
   schedule.lastCheckIn = Date.now();
+  await saveProactiveSchedule(schedule);
+}
+
+export async function resetProactiveScheduleReplyState(chatId: number): Promise<void> {
+  const schedule = await getProactiveSchedule(chatId);
+  if (!schedule) return;
+
+  schedule.consecutiveUnansweredCheckIns = 0;
+  schedule.awaitingUserReply = false;
+  schedule.pausedUntilUserReply = false;
+  await saveProactiveSchedule(schedule);
+}
+
+export async function pauseProactiveScheduleUntilReply(chatId: number): Promise<void> {
+  const schedule = await getProactiveSchedule(chatId);
+  if (!schedule) return;
+
+  schedule.qstashMessageId = undefined;
+  schedule.scheduledFor = undefined;
+  schedule.pausedUntilUserReply = true;
+  await saveProactiveSchedule(schedule);
+}
+
+export async function updateProactiveScheduleAfterResume(
+  chatId: number,
+  qstashMessageId: string,
+  scheduledFor: number,
+): Promise<void> {
+  const schedule = await getProactiveSchedule(chatId);
+  if (!schedule) return;
+
+  schedule.qstashMessageId = qstashMessageId;
+  schedule.scheduledFor = scheduledFor;
+  schedule.consecutiveUnansweredCheckIns = 0;
+  schedule.awaitingUserReply = false;
+  schedule.pausedUntilUserReply = false;
   await saveProactiveSchedule(schedule);
 }
 
@@ -477,6 +525,10 @@ export async function disableProactiveSchedule(chatId: number): Promise<void> {
   if (!schedule) return;
 
   schedule.enabled = false;
+  schedule.qstashMessageId = undefined;
+  schedule.scheduledFor = undefined;
+  schedule.awaitingUserReply = false;
+  schedule.pausedUntilUserReply = false;
   await saveProactiveSchedule(schedule);
 }
 

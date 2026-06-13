@@ -286,13 +286,17 @@ Just start chatting in Japanese (or English if you prefer), and I'll match your 
 
     res.status(200).json({ ok: true });
   } catch (error) {
+    const detail = error instanceof Error ? error.message.slice(0, 180) : String(error).slice(0, 180);
     console.error(`Webhook error at stage ${stage}:`, error);
     if (chatId) {
       try {
-        await telegram.sendMessage(chatId, `Something went wrong at stage: ${stage}. Try again?`);
+        await telegram.sendMessage(
+          chatId,
+          `Something went wrong at stage: ${stage}. Detail: ${detail}. Try again?`,
+        );
       } catch {}
     }
-    res.status(500).json({ error: "Internal server error", stage });
+    res.status(500).json({ error: "Internal server error", stage, detail });
   }
 }
 

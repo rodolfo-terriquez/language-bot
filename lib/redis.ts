@@ -14,7 +14,16 @@ let redisClient: Redis | null = null;
 
 function getClient(): Redis {
   if (!redisClient) {
-    redisClient = Redis.fromEnv();
+    const url = process.env.UPSTASH_REDIS_REST_URL;
+    const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+    if (!url || !token) {
+      throw new Error("Upstash Redis environment variables are not set");
+    }
+
+    // Use explicit config instead of Redis.fromEnv() so the client works consistently
+    // in both Vercel and Cloudflare Workers after the Worker adapter installs env vars.
+    redisClient = new Redis({ url, token });
   }
   return redisClient;
 }

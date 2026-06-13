@@ -26,12 +26,26 @@ const logger = initLogger({
 let openrouterClient: OpenAI | null = null;
 
 // Models to use - configurable via environment variables
+// Keep a known-good default here. The old default, x-ai/grok-3-fast, was removed from
+// OpenRouter's public model list by 2026-06-13 and causes generic webhook failures.
+const DEFAULT_OPENROUTER_MODEL = "openai/gpt-4.1-mini";
+const RETIRED_MODEL_ALIASES = new Set(["x-ai/grok-3-fast"]);
+
+function normalizeModel(model: string | undefined): string {
+  if (!model || RETIRED_MODEL_ALIASES.has(model)) {
+    return DEFAULT_OPENROUTER_MODEL;
+  }
+  return model;
+}
+
 function getChatModel(): string {
-  return process.env.OPENROUTER_MODEL_CHAT || "x-ai/grok-3-fast";
+  return normalizeModel(process.env.OPENROUTER_MODEL_CHAT);
 }
 
 function getIntentModel(): string {
-  return process.env.OPENROUTER_MODEL_INTENT || getChatModel();
+  return process.env.OPENROUTER_MODEL_INTENT
+    ? normalizeModel(process.env.OPENROUTER_MODEL_INTENT)
+    : getChatModel();
 }
 
 function getClient(): OpenAI {

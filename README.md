@@ -1,286 +1,142 @@
-# Japanese Language Learning Bot (Emi)
+# Japanese Conversation Bot — Emi
 
-A Telegram bot that teaches Japanese (JLPT N5) through daily conversational lessons over 30 days. Uses a hybrid approach: predefined syllabus structure with LLM-generated exercises and explanations.
+A private Telegram bot for focused Japanese conversation practice with Emi.
 
-## Features
+This is **not** Rodolfo's main Japanese habit system. Treat it as an optional conversation sandbox: useful when focused practice sounds appealing, but not something that should become another daily obligation.
 
-- **30-day N5 curriculum**: Vocabulary, grammar, kanji, and cultural notes
-- **Adaptive learning with spaced repetition**: Automatically reviews weak items from previous days
-- **Mastery tracking**: Per-item tracking of correct/incorrect answers with mastery levels (0-5)
-- **Multiple exercise types**: Translation, reading, grammar formation
-- **Voice input support**: Practice pronunciation with Whisper transcription
-- **Progress tracking**: Streaks, scores, and mastery levels
-- **Emi personality**: An energetic, adorable dog girl tutor who gets excited when you learn!
+## Current status
 
-## Adaptive Learning System
+- **Role:** occasional Japanese conversation gym / reference implementation
+- **Interface:** Telegram
+- **Core mode:** free conversation in Japanese with furigana
+- **Status as of 2026-06-13:** code type-checks cleanly; deployment/webhook status should be verified before use
+- **Do not revive as:** a full lesson curriculum, streak system, or primary practice habit
 
-Starting from Day 2, each lesson automatically includes review items from previous days based on spaced repetition:
+## What it does
 
-**How it works:**
-1. Every answer updates mastery data (correct/incorrect counts, mastery level 0-5)
-2. Items with `masteryLevel < 3` or not seen in 2+ days are flagged for review
-3. Priority is calculated: `(5 - masteryLevel) * 2 + daysSinceLastSeen * 0.5 + errorRatio * 3`
-4. Top 5 priority items are added to the start of each lesson
+- Chats as **Emi**, a warm puppygirl Japanese conversation partner
+- Responds primarily in Japanese with inline furigana for kanji
+- Adjusts to beginner/intermediate/advanced level from the stored user profile
+- Rewrites English or mixed English/Japanese input into natural Japanese before replying
+- Stores long-term user memory and Emi self-memory in Redis
+- Supports Telegram voice messages via Whisper transcription
+- Can send optional proactive check-ins via QStash
+- Pauses proactive check-ins after unanswered messages so it does not nag forever
 
-**Example checklist with review items:**
-```
-[Lesson Checklist - Day 5: Time & Daily Routine]
-[2 review items from previous days]
-[ ] REVIEW: [Review from Day 2] おはようございます - Good morning ← CURRENT
-[ ] REVIEW: [Review from Day 3] なに (nani) - what
-[ ] TEACH: いま (ima) - now
-[ ] TEACH: じかん (jikan) - time
-...
-```
+## Useful commands
 
-Review items are kept brief (30-60 seconds each) - quick recall exercises rather than full re-teaching.
+| Command | Purpose |
+| --- | --- |
+| `/eng` | Translate Emi's last message into English |
+| `/exp` | Explain grammar in Emi's last message |
+| `/checkin status` | Show proactive check-in status |
+| `/checkin on` | Enable daily proactive check-ins |
+| `/checkin off` | Disable proactive check-ins |
+| `/reset` or `/reset context` | Clear conversation context but keep memories |
+| `/reset all` | Clear conversation context, user memory, and Emi memory |
+| `/debug` | Show stored profile, memory, and check-in state |
 
-## Setup Instructions
+## Practice shape
 
-### 1. Create a Telegram Bot
+Good use:
 
-1. Open Telegram and search for `@BotFather`
-2. Send `/newbot` and follow the prompts
-3. Copy the bot token (looks like `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`)
+1. Open Telegram when you deliberately want focused Japanese conversation.
+2. Send a short Japanese or English thought.
+3. Let Emi rewrite/answer naturally.
+4. Use `/eng` if you need the meaning.
+5. Use `/exp` if a grammar point is interesting.
+6. Stop when you naturally feel done.
 
-### 2. Get Your Telegram User ID
+Avoid:
 
-1. Search for `@userinfobot` on Telegram
-2. Start a chat with it - it will show your user ID
-3. Copy this number for the `ALLOWED_USERS` env var
+- Turning this into a required daily habit
+- Rebuilding the old 30-day lesson system
+- Adding streaks, stats, or heavy tracking
+- Using proactive check-ins as the main consistency mechanism
 
-### 3. Set Up External Services
+## Tech stack
 
-#### Upstash Redis
-1. Go to [upstash.com](https://upstash.com) and create an account
-2. Create a new Redis database
-3. Copy the `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
+- **Runtime:** Vercel Serverless Functions, TypeScript
+- **Interface:** Telegram Bot API
+- **LLM:** OpenRouter-compatible chat completions
+- **Voice transcription:** OpenAI Whisper
+- **Storage:** Upstash Redis
+- **Scheduling:** Upstash QStash
+- **Tracing:** Braintrust optional
 
-#### Upstash QStash
-1. In Upstash console, go to QStash
-2. Copy the `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY`, and `QSTASH_NEXT_SIGNING_KEY`
+## Project structure
 
-#### OpenRouter (LLM)
-1. Go to [openrouter.ai](https://openrouter.ai) and create an account
-2. Add credits and create an API key
-3. Copy the `OPENROUTER_API_KEY`
-
-#### OpenAI (Whisper for voice)
-1. Go to [platform.openai.com](https://platform.openai.com) and create an account
-2. Create an API key
-3. Copy the `OPENAI_API_KEY`
-
-#### Braintrust (Observability - Optional)
-1. Go to [braintrust.dev](https://braintrust.dev) and create an account
-2. Create a new project called "Japanese Language Bot"
-3. Copy the `BRAINTRUST_API_KEY`
-
-### 4. Deploy to Vercel
-
-1. Push this repo to GitHub
-2. Go to [vercel.com](https://vercel.com) and import the repository
-3. Add all environment variables (see below)
-4. Deploy
-
-### 5. Set Up Telegram Webhook
-
-After deployment, set the webhook by visiting:
-```
-https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https://<YOUR_VERCEL_URL>/api/telegram
-```
-
-### 6. Environment Variables
-
-Create these in Vercel (or `.env.local` for local development):
-
-```bash
-# Telegram
-TELEGRAM_BOT_TOKEN=your-telegram-bot-token
-ALLOWED_USERS=your-telegram-user-id
-
-# Your Vercel deployment URL
-BASE_URL=https://your-app.vercel.app
-
-# Redis namespace (prevents collision with other bots)
-REDIS_KEY_PREFIX=lang:
-
-# Timezone for lesson scheduling
-USER_TIMEZONE=America/Mexico_City
-
-# Upstash Redis
-UPSTASH_REDIS_REST_URL=https://xxx.upstash.io
-UPSTASH_REDIS_REST_TOKEN=xxx
-
-# Upstash QStash
-QSTASH_TOKEN=xxx
-QSTASH_CURRENT_SIGNING_KEY=xxx
-QSTASH_NEXT_SIGNING_KEY=xxx
-
-# OpenRouter (LLM)
-OPENROUTER_API_KEY=sk-or-v1-xxx
-
-# OpenAI (Whisper voice transcription)
-OPENAI_API_KEY=sk-xxx
-
-# Braintrust (observability - optional)
-BRAINTRUST_API_KEY=xxx
-BRAINTRUST_PROJECT_NAME=Japanese Language Bot
-```
-
-## Multi-Tenancy (Sharing with ADHD Bot)
-
-If you're sharing Redis/QStash with another bot (like the ADHD bot), the `REDIS_KEY_PREFIX` ensures no key collisions:
-
-- ADHD Bot: `REDIS_KEY_PREFIX=adhd:`
-- Language Bot: `REDIS_KEY_PREFIX=lang:`
-
-All Redis keys are automatically prefixed, so `user:123` becomes `lang:user:123`.
-
-## Usage
-
-### Basic Commands
-
-| Command | Description |
-|---------|-------------|
-| `/start` | Start or restart your learning journey |
-| `/lesson` | Begin today's lesson |
-| `/progress` | View your learning stats |
-| `/weak` | Review your weak areas |
-| `/help` | Show help message |
-
-### Lesson Flow
-
-1. **Intro**: Overview of the day's content
-2. **Vocabulary**: Learn new words with examples
-3. **Grammar**: New patterns with explanations
-4. **Kanji**: Character study with mnemonics
-5. **Practice**: Exercises for each section
-6. **Assessment**: Final quiz (70% to pass)
-
-### During Lessons
-
-- Type answers to exercises
-- Say "hint" for progressive hints
-- Say "skip" to move on
-- Send voice messages for pronunciation practice
-
-## Curriculum Overview
-
-| Week | Days | Theme |
-|------|------|-------|
-| 1 | 1-5 | Foundations: greetings, self-intro, numbers, particles |
-| 2 | 6-10 | Daily Life: time, dates, routines, family |
-| 3 | 11-15 | Actions & Places: verbs, locations, transportation |
-| 4 | 16-20 | Descriptions: adjectives, comparisons, preferences |
-| 5 | 21-25 | Social: shopping, dining, requests |
-| 6 | 26-30 | Integration: complex sentences, review |
-
-## Project Structure
-
-```
+```text
 language-bot/
 ├── api/
-│   ├── telegram.ts        # Telegram webhook handler
-│   └── notify.ts          # QStash notification handler
+│   ├── index.ts      # small status/landing page
+│   ├── telegram.ts   # Telegram webhook handler
+│   ├── notify.ts     # QStash proactive check-in callback
+│   ├── setup.ts      # helper endpoint to set Telegram webhook
+│   └── health.ts     # environment/health check
 ├── lib/
-│   ├── types.ts           # TypeScript interfaces
-│   ├── redis.ts           # Redis data access + mastery tracking + getReviewCandidates()
-│   ├── llm.ts             # LLM integration + lesson response generation
-│   ├── telegram.ts        # Telegram API helpers
-│   ├── qstash.ts          # Notification scheduling
-│   ├── whisper.ts         # Voice transcription
-│   ├── syllabus.ts        # Syllabus loading
-│   ├── lesson-engine.ts   # Lesson state machine
-│   └── lesson-checklist.ts # Checklist generation with adaptive review items
-├── data/
-│   └── syllabus/
-│       └── n5/
-│           ├── index.json
-│           └── days/
-│               ├── day01.json
-│               └── ... (30 days)
+│   ├── llm.ts        # Emi prompt, LLM calls, translation, grammar explanation
+│   ├── redis.ts      # conversation, memory, and schedule storage
+│   ├── telegram.ts   # Telegram API helpers
+│   ├── qstash.ts     # check-in scheduling
+│   ├── whisper.ts    # voice transcription
+│   └── types.ts      # shared TypeScript types
+├── scripts/
+│   ├── inspect-redis.ts
+│   └── cleanup-redis.ts
 └── package.json
 ```
 
-### Key Files for Adaptive Learning
+## Environment variables
 
-| File | Role |
-|------|------|
-| `redis.ts` | `getReviewCandidates()` - Selects items needing review using spaced repetition priority |
-| `lesson-checklist.ts` | `generateChecklist()` - Injects review items at start of lesson |
-| `llm.ts` | `LESSON_RESPONSE_INSTRUCTIONS` - Teaches Emi how to handle review items |
-| `types.ts` | `LessonChecklistItem.type` includes "review", `sourceDayNumber` for tracking origin |
+See `.env.example` for the full list. Required in production:
 
-### Lesson Architecture
-
-The bot uses a **checklist-driven LLM approach** for lessons:
-
-```
-User Message → Intent Parsing → Checklist Flow → LLM → Response
-                    ↓
-            (only for control intents:
-             pause, progress, etc.)
-```
-
-**During lessons**, the LLM handles everything directly:
-- Evaluating answers (correct/incorrect)
-- Giving hints when asked
-- Skipping items when requested
-- Explaining concepts
-- Advancing through the checklist
-
-The LLM receives:
-1. **Checklist state**: Current item, progress, what's completed
-2. **Teaching content**: Full syllabus data (vocabulary, grammar, kanji details)
-3. **Conversation history**: Context from previous exchanges
-
-It returns:
-```json
-{
-  "message": "Teaching response to student",
-  "checklistAction": "none" | "complete" | "insert"
-}
+```bash
+TELEGRAM_BOT_TOKEN=
+ALLOWED_USERS=
+BASE_URL=
+REDIS_KEY_PREFIX=lang:
+USER_TIMEZONE=America/Mexico_City
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+QSTASH_TOKEN=
+QSTASH_CURRENT_SIGNING_KEY=
+QSTASH_NEXT_SIGNING_KEY=
+OPENROUTER_API_KEY=
+OPENAI_API_KEY=
 ```
 
-This approach:
-- Reduces code complexity (no separate handlers for hints, skips, answers)
-- Allows natural conversation flow
-- Lets the LLM make contextual decisions about when to advance
+Optional:
 
-**Auto-continue**: When the LLM marks an item complete, the bot automatically presents the next item without waiting for user input. This prevents the lesson from stalling between items.
+```bash
+OPENROUTER_MODEL_CHAT=
+OPENROUTER_MODEL_INTENT=
+BRAINTRUST_API_KEY=
+BRAINTRUST_PROJECT_ID=
+```
 
 ## Development
 
 ```bash
-# Install dependencies
 npm install
-
-# Type check
 npm run type-check
-
-# Build
-npm run build
-
-# Local development (requires vercel CLI)
 vercel dev
 ```
 
-## Troubleshooting
+Local Telegram webhook testing requires a public tunnel such as ngrok.
 
-### Bot not responding
-1. Check webhook is set correctly
-2. Verify `TELEGRAM_BOT_TOKEN` is correct
-3. Check Vercel function logs for errors
+## Deployment checklist
 
-### Lessons not advancing
-1. Check Redis connection
-2. Verify `REDIS_KEY_PREFIX` is consistent
-3. Check lesson progress in Redis
+Before using it again:
 
-### Voice messages not working
-1. Verify `OPENAI_API_KEY` is set
-2. Check Whisper API quota
+1. Confirm the Vercel project is linked and deployed.
+2. Confirm production environment variables are present.
+3. Visit `/api/health` on the deployment URL.
+4. Set Telegram webhook via `/api/setup?url=https://your-domain.vercel.app` or the Telegram API.
+5. Send a real Telegram message to Emi.
+6. Test `/eng` and `/exp`.
+7. Keep `/checkin off` unless proactive practice is explicitly wanted.
 
-## License
+## Triage note — 2026-06-13
 
-MIT
+Reviewed as part of a Saturday chaos sprint. The codebase is still viable and type-checks cleanly, but it should stay bounded: **optional focused conversation tool, not the main Japanese practice system**. The most useful ideas to salvage elsewhere are the `/eng` + `/exp` flow, furigana-first Japanese output, memory-backed conversation, and voice-message support.

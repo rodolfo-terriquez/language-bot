@@ -2,7 +2,7 @@
   "name": "japanese-language-bot",
   "version": "1.0.0",
   "type": "module",
-  "description": "Japanese language learning Telegram bot with daily lessons, voice practice, and progress tracking",
+  "description": "Private Japanese conversation practice Telegram bot with memory, voice input, and grammar helpers",
   "main": "api/telegram.ts",
   "scripts": {
     "dev": "vercel dev",

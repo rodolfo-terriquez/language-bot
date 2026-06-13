@@ -16,7 +16,7 @@ export default async function handler(
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>ADHD Support Bot</title>
+      <title>Japanese Conversation Bot — Emi</title>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -99,8 +99,8 @@ export default async function handler(
     </head>
     <body>
       <div class="container">
-        <h1>🧠 ADHD Support Bot</h1>
-        <p class="subtitle">Your personal Telegram assistant for managing ADHD</p>
+        <h1>🌸 Japanese Conversation Bot — Emi</h1>
+        <p class="subtitle">Private Telegram sandbox for focused Japanese conversation practice</p>
         
         <div class="status">
           <div class="status-item">
@@ -116,11 +116,12 @@ export default async function handler(
         <div class="features">
           <h3>Features</h3>
           <ul>
+            <li>Japanese conversation with furigana</li>
             <li>Voice message transcription</li>
-            <li>Natural language reminders</li>
-            <li>Brain dump capture</li>
-            <li>Smart gentle nagging</li>
-            <li>Daily summaries</li>
+            <li>Long-term memory</li>
+            <li>English translation helper via /eng</li>
+            <li>Grammar explanation helper via /exp</li>
+            <li>Optional proactive check-ins</li>
           </ul>
         </div>
 

@@ -4,7 +4,15 @@ import notifyHandler from "./api/notify.js";
 import setupHandler from "./api/setup.js";
 import telegramHandler from "./api/telegram.js";
 
-type Env = Record<string, string | undefined>;
+type SimpleKVNamespace = {
+  get: (key: string) => Promise<string | null>;
+  put: (key: string, value: string, options?: { expirationTtl?: number }) => Promise<void>;
+  delete: (key: string) => Promise<void>;
+};
+
+type Env = Record<string, string | SimpleKVNamespace | undefined> & {
+  LANGUAGE_BOT_KV?: SimpleKVNamespace;
+};
 
 type VercelLikeRequest = {
   method: string;
@@ -53,14 +61,21 @@ class ResponseCapture implements VercelLikeResponse {
 
 function installProcessEnv(env: Env): void {
   const globalWithProcess = globalThis as typeof globalThis & {
+    __LANGUAGE_BOT_KV?: SimpleKVNamespace;
     process?: { env?: Record<string, string | undefined> };
   };
 
+  globalWithProcess.__LANGUAGE_BOT_KV = env.LANGUAGE_BOT_KV;
   globalWithProcess.process = globalWithProcess.process || {};
   globalWithProcess.process.env = {
     ...(globalWithProcess.process.env || {}),
-    ...env,
   };
+
+  for (const [key, value] of Object.entries(env)) {
+    if (typeof value === "string") {
+      globalWithProcess.process.env[key] = value;
+    }
+  }
 }
 
 async function toVercelLikeRequest(request: Request): Promise<VercelLikeRequest> {

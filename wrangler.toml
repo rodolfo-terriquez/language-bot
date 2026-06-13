@@ -9,3 +9,7 @@ USER_TIMEZONE = "America/Mexico_City"
 OPENROUTER_MODEL_CHAT = "deepseek/deepseek-v4-flash"
 OPENROUTER_MODEL_INTENT = "deepseek/deepseek-v4-flash"
 BASE_URL = "https://language-bot.rodolfo-302.workers.dev"
+
+[[kv_namespaces]]
+binding = "LANGUAGE_BOT_KV"
+id = "c08a06d026ec47d18ddbaea4ed40b06a"

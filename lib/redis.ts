@@ -10,22 +10,92 @@ import type {
   ProactiveSchedule,
 } from "./types.js";
 
-let redisClient: Redis | null = null;
+type SimpleKVNamespace = {
+  get: (key: string) => Promise<string | null>;
+  put: (key: string, value: string, options?: { expirationTtl?: number }) => Promise<void>;
+  delete: (key: string) => Promise<void>;
+};
 
-function getClient(): Redis {
-  if (!redisClient) {
-    const url = process.env.UPSTASH_REDIS_REST_URL;
-    const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+type StoreSetOptions = { nx?: boolean; ex?: number };
 
-    if (!url || !token) {
-      throw new Error("Upstash Redis environment variables are not set");
-    }
+type Store = {
+  get: <T = unknown>(key: string) => Promise<T | null>;
+  set: (key: string, value: string, options?: StoreSetOptions) => Promise<"OK" | null>;
+  del: (key: string) => Promise<void>;
+  sadd: (key: string, member: string) => Promise<number>;
+  smembers: <T = string[]>(key: string) => Promise<T>;
+};
 
-    // Use explicit config instead of Redis.fromEnv() so the client works consistently
-    // in both Vercel and Cloudflare Workers after the Worker adapter installs env vars.
-    redisClient = new Redis({ url, token });
+declare global {
+  // Set by worker.ts when running in Cloudflare Workers.
+  // eslint-disable-next-line no-var
+  var __LANGUAGE_BOT_KV: SimpleKVNamespace | undefined;
+}
+
+let storeClient: Store | null = null;
+
+function createKvStore(kv: SimpleKVNamespace): Store {
+  return {
+    async get<T = unknown>(key: string): Promise<T | null> {
+      return (await kv.get(key)) as T | null;
+    },
+    async set(key: string, value: string, options?: StoreSetOptions): Promise<"OK" | null> {
+      if (options?.nx) {
+        const existing = await kv.get(key);
+        if (existing !== null) return null;
+      }
+      await kv.put(
+        key,
+        value,
+        options?.ex ? { expirationTtl: options.ex } : undefined,
+      );
+      return "OK";
+    },
+    async del(key: string): Promise<void> {
+      await kv.delete(key);
+    },
+    async sadd(key: string, member: string): Promise<number> {
+      const existing = await kv.get(key);
+      const members = existing ? (JSON.parse(existing) as string[]) : [];
+      if (members.includes(member)) return 0;
+      members.push(member);
+      await kv.put(key, JSON.stringify(members));
+      return 1;
+    },
+    async smembers<T = string[]>(key: string): Promise<T> {
+      const existing = await kv.get(key);
+      return (existing ? JSON.parse(existing) : []) as T;
+    },
+  };
+}
+
+function createUpstashStore(): Store {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  if (!url || !token) {
+    throw new Error("No Cloudflare KV binding or Upstash Redis environment variables are set");
   }
-  return redisClient;
+
+  const redis = new Redis({ url, token });
+  return {
+    get: <T = unknown>(key: string) => redis.get<T>(key),
+    set: (key: string, value: string, options?: StoreSetOptions) =>
+      (redis as any).set(key, value, options),
+    del: async (key: string) => {
+      await redis.del(key);
+    },
+    sadd: (key: string, member: string) => redis.sadd(key, member),
+    smembers: async <T = string[]>(key: string) => (await (redis as any).smembers(key)) as T,
+  };
+}
+
+function getClient(): Store {
+  if (!storeClient) {
+    const kv = globalThis.__LANGUAGE_BOT_KV;
+    storeClient = kv ? createKvStore(kv) : createUpstashStore();
+  }
+  return storeClient;
 }
 
 // Key prefix for multi-project support

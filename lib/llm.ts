@@ -28,7 +28,7 @@ let openrouterClient: OpenAI | null = null;
 // Models to use - configurable via environment variables
 // Keep a known-good default here. The old default, x-ai/grok-3-fast, was removed from
 // OpenRouter's public model list by 2026-06-13 and causes generic webhook failures.
-const DEFAULT_OPENROUTER_MODEL = "openai/gpt-4.1-mini";
+const DEFAULT_OPENROUTER_MODEL = "deepseek/deepseek-v4-flash";
 const RETIRED_MODEL_ALIASES = new Set(["x-ai/grok-3-fast"]);
 
 function normalizeModel(model: string | undefined): string {

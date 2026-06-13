@@ -86,8 +86,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
 
   let chatId: number | undefined;
+  let stage = "start";
 
   try {
+    stage = "parse_update";
     const update = req.body as TelegramUpdate;
 
     if (!update.message) {
@@ -100,6 +102,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
     // Idempotency: avoid processing the same Telegram message twice
     try {
+      stage = "mark_message_processed";
       const processed = await redis.tryMarkMessageProcessed(chatId, message.message_id, 180);
       if (!processed) {
         console.log(`[${chatId}] Duplicate webhook message_id ${message.message_id} ignored`);
@@ -113,6 +116,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       );
     }
 
+    stage = "check_access";
     // Check if user is allowed
     const allowedUsers = process.env.ALLOWED_USERS;
     if (allowedUsers) {
@@ -128,11 +132,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
 
     // New user setup
+    stage = "register_chat";
     const isNewUser = await redis.registerChat(chatId);
     if (isNewUser) {
       const displayName = message.from?.first_name || "Friend";
+      stage = "create_user_profile";
       await redis.createUserProfile(chatId, displayName);
 
+      stage = "send_welcome";
       await telegram.sendMessage(
         chatId,
         `Hi ${displayName}! I'm Emi, your Japanese conversation partner! 🌸
@@ -148,14 +155,20 @@ Just start chatting in Japanese (or English if you prefer), and I'll match your 
     }
 
     // Get user input (voice or text)
+    stage = "read_user_input";
     let userText: string;
 
     if (message.voice) {
+      stage = "send_transcribing";
       await telegram.sendMessage(chatId, "Transcribing...");
       try {
+        stage = "get_voice_file";
         const filePath = await telegram.getFilePath(message.voice.file_id);
+        stage = "download_voice_file";
         const audioBuffer = await telegram.downloadFile(filePath);
+        stage = "transcribe_voice";
         userText = await transcribeAudio(audioBuffer);
+        stage = "send_transcription";
         await telegram.sendMessage(chatId, `_"${userText}"_`);
       } catch (error) {
         console.error("Transcription error:", error);
@@ -170,8 +183,11 @@ Just start chatting in Japanese (or English if you prefer), and I'll match your 
       return;
     }
 
+    stage = "handle_commands";
+
     // Handle /debug command
     if (userText.trim().toLowerCase() === "/debug") {
+      stage = "debug_command";
       await handleDebugCommand(chatId);
       res.status(200).json({ ok: true });
       return;
@@ -184,6 +200,7 @@ Just start chatting in Japanese (or English if you prefer), and I'll match your 
       .match(/^\/reset\s*(all|context)?$/);
     if (resetMatch) {
       const resetType = resetMatch[1] || "context"; // default to context if no argument
+      stage = "reset_command";
       await handleResetCommand(chatId, resetType as "all" | "context");
       res.status(200).json({ ok: true });
       return;
@@ -196,6 +213,7 @@ Just start chatting in Japanese (or English if you prefer), and I'll match your 
       .match(/^\/checkin\s*(on|off|status)?$/);
     if (checkinMatch) {
       const action = checkinMatch[1] || "status";
+      stage = "checkin_command";
       await handleCheckInCommand(chatId, action as "on" | "off" | "status");
       res.status(200).json({ ok: true });
       return;
@@ -203,6 +221,7 @@ Just start chatting in Japanese (or English if you prefer), and I'll match your 
 
     // Handle /eng command (translate last message)
     if (userText.trim().toLowerCase() === "/eng") {
+      stage = "eng_command";
       await handleTranslateCommand(chatId);
       res.status(200).json({ ok: true });
       return;
@@ -210,12 +229,14 @@ Just start chatting in Japanese (or English if you prefer), and I'll match your 
 
     // Handle /exp command (explain grammar of last message)
     if (userText.trim().toLowerCase() === "/exp") {
+      stage = "exp_command";
       await handleExplainCommand(chatId);
       res.status(200).json({ ok: true });
       return;
     }
 
     // Get conversation context and memory
+    stage = "load_context";
     const [conversationData, profile, memory, emiMemory] = await Promise.all([
       redis.getConversationData(chatId),
       redis.getUserProfile(chatId),
@@ -234,10 +255,12 @@ Just start chatting in Japanese (or English if you prefer), and I'll match your 
     };
 
     // Parse intent (simplified - mostly just conversation)
+    stage = "parse_intent";
     const intent = await parseIntent(userText, filteredMessages);
     console.log(`[${chatId}] Intent: ${intent.type}`);
 
     // Generate response
+    stage = "generate_response";
     const result = await generateConversationResponse(
       userText,
       context,
@@ -246,26 +269,30 @@ Just start chatting in Japanese (or English if you prefer), and I'll match your 
 
     // Execute any memory tool calls
     if (result.memoryToolCalls.length > 0) {
+      stage = "execute_memory_tools";
       await executeMemoryToolCalls(chatId, result.memoryToolCalls);
     }
 
     // Send response
+    stage = "send_response";
     await telegram.sendMessage(chatId, result.response);
 
     // Save to conversation history
+    stage = "save_conversation";
     await redis.addToConversation(chatId, userText, result.response);
 
+    stage = "resume_checkins";
     await resumeProactiveCheckInsAfterUserReply(chatId);
 
     res.status(200).json({ ok: true });
   } catch (error) {
-    console.error("Webhook error:", error);
+    console.error(`Webhook error at stage ${stage}:`, error);
     if (chatId) {
       try {
-        await telegram.sendMessage(chatId, "Something went wrong. Try again?");
+        await telegram.sendMessage(chatId, `Something went wrong at stage: ${stage}. Try again?`);
       } catch {}
     }
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", stage });
   }
 }
 

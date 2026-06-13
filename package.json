@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "vercel dev",
     "lint": "eslint . --ext .ts",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "dev:cf": "wrangler dev",
+    "deploy:cf": "wrangler deploy"
   },
   "dependencies": {
     "@upstash/qstash": "^2.7.0",

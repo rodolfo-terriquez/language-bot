@@ -1,0 +1,10 @@
+name = "language-bot"
+main = "worker.ts"
+compatibility_date = "2026-06-13"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+REDIS_KEY_PREFIX = "lang:"
+USER_TIMEZONE = "America/Mexico_City"
+OPENROUTER_MODEL_CHAT = "deepseek/deepseek-v4-flash"
+OPENROUTER_MODEL_INTENT = "deepseek/deepseek-v4-flash"

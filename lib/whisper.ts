@@ -18,7 +18,7 @@ export async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
 
   // Create a File object from the buffer
   // Telegram voice messages are in OGG format
-  const file = new File([audioBuffer], "voice.ogg", { type: "audio/ogg" });
+  const file = new File([new Uint8Array(audioBuffer)], "voice.ogg", { type: "audio/ogg" });
 
   const transcription = await client.audio.transcriptions.create({
     file,

@@ -60,7 +60,7 @@ function getClient(): OpenAI {
         apiKey,
         timeout: 20000,
         defaultHeaders: {
-          "HTTP-Referer": process.env.BASE_URL || "https://language-bot.vercel.app",
+          "HTTP-Referer": process.env.BASE_URL || "https://language-bot.rodolfo-302.workers.dev",
           "X-Title": "Japanese Language Bot",
         },
       }),
@@ -208,6 +208,17 @@ Emi is a puppygirl with long white hair styled in twintails, bright blue eyes, f
 - If you know the user's name, use it naturally in conversation
 - Reference things you've learned about them to make conversations feel personal
 `;
+
+const TELEGRAM_RICH_MARKDOWN_INSTRUCTIONS = `## Telegram Rich Markdown
+Your replies are sent through Telegram Bot API Rich Messages using Rich Markdown. You may use concise GitHub-flavored Markdown when it improves clarity:
+- Headings with #, ##, ### for structured explanations
+- **bold**, _italic_, ~~strikethrough~~, ==highlight==, ||spoilers||, and \`inline code\`
+- Bullet lists, numbered lists, task lists, block quotes, tables, footnotes, and horizontal rules
+- Fenced code blocks with a language name when showing code or structured examples
+- Inline formulas with $...$ and display formulas with $$...$$
+- HTML tags for rich features without Markdown syntax, such as <u>, <sub>, <sup>, and <details><summary>Title</summary>Content</details>
+
+Use formatting lightly in normal conversation, and more freely for lessons, grammar explanations, vocabulary tables, examples, or summaries.`;
 
 // ==========================================
 // Memory Tool Definitions for LLM
@@ -518,6 +529,7 @@ export async function generateConversationResponse(
   const client = getClient();
 
   let systemPrompt = getCurrentTimeContext() + EMI_PERSONALITY;
+  systemPrompt += `\n\n${TELEGRAM_RICH_MARKDOWN_INSTRUCTIONS}`;
 
   // Add level context
   systemPrompt += `\n\n## User's Level: ${userLevel.toUpperCase()}
@@ -680,6 +692,7 @@ export async function generateProactiveCheckIn(
   const client = getClient();
 
   let systemPrompt = getCurrentTimeContext() + PROACTIVE_CHECKIN_PROMPT;
+  systemPrompt += `\n\n${TELEGRAM_RICH_MARKDOWN_INSTRUCTIONS}`;
 
   // Add level context
   systemPrompt += `\n\n## User's Level: ${userLevel.toUpperCase()}
@@ -902,10 +915,10 @@ export async function explainGrammar(text: string): Promise<string> {
         role: "system",
         content: `Break down the following Japanese text and explain its grammar for a beginner/intermediate learner.
 
-IMPORTANT: Output plain text only. No markdown, no headers, no bullet points with *, no **bold**.
+Use Telegram Rich Markdown when it makes the explanation easier to scan. Prefer short headings, bullets, bold labels, inline code, and simple tables over dense paragraphs.
 
 Format:
-- Use simple dashes (-) for lists
+- Use simple dashes (-) or numbered lists for lists
 - Use arrows (→) to show transformations
 - Separate sections with blank lines
 - Keep it clean and readable in a chat app

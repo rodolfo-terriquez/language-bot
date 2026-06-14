@@ -102,10 +102,10 @@ export async function scheduleProactiveCheckIn(
   options: ScheduleCheckInOptions,
 ): Promise<ScheduledCheckIn> {
   const client = getClient();
-  const baseUrl = process.env.BASE_URL || process.env.VERCEL_URL;
+  const baseUrl = process.env.BASE_URL;
 
   if (!baseUrl) {
-    throw new Error("BASE_URL or VERCEL_URL is required for scheduling");
+    throw new Error("BASE_URL is required for scheduling");
   }
 
   const notifyUrl = baseUrl.startsWith("http")

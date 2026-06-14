@@ -1,8 +1,8 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
+import type { HttpRequest, HttpResponse } from "../lib/http.js";
 
 export default function handler(
-  req: VercelRequest,
-  res: VercelResponse
+  req: HttpRequest,
+  res: HttpResponse
 ): void {
   res.status(200).json({
     status: "ok",
@@ -17,4 +17,3 @@ export default function handler(
     },
   });
 }
-

@@ -3,6 +3,7 @@ import healthHandler from "./api/health.js";
 import notifyHandler from "./api/notify.js";
 import setupHandler from "./api/setup.js";
 import telegramHandler from "./api/telegram.js";
+import type { HttpRequest, HttpResponse } from "./lib/http.js";
 
 type SimpleKVNamespace = {
   get: (key: string) => Promise<string | null>;
@@ -14,27 +15,14 @@ type Env = Record<string, string | SimpleKVNamespace | undefined> & {
   LANGUAGE_BOT_KV?: SimpleKVNamespace;
 };
 
-type VercelLikeRequest = {
-  method: string;
-  body?: unknown;
-  query: Record<string, string>;
-  headers: Record<string, string | undefined>;
-};
+type HttpHandler = (req: HttpRequest, res: HttpResponse) => Promise<void> | void;
 
-type VercelLikeResponse = {
-  status: (code: number) => VercelLikeResponse;
-  json: (body: unknown) => void;
-  send: (body: string) => void;
-};
-
-type VercelHandler = (req: VercelLikeRequest, res: VercelLikeResponse) => Promise<void> | void;
-
-class ResponseCapture implements VercelLikeResponse {
+class ResponseCapture implements HttpResponse {
   private statusCode = 200;
   private body: BodyInit = "";
   private headers = new Headers();
 
-  status(code: number): VercelLikeResponse {
+  status(code: number): HttpResponse {
     this.statusCode = code;
     return this;
   }
@@ -78,7 +66,7 @@ function installProcessEnv(env: Env): void {
   }
 }
 
-async function toVercelLikeRequest(request: Request): Promise<VercelLikeRequest> {
+async function toHttpRequest(request: Request): Promise<HttpRequest> {
   const url = new URL(request.url);
   const headers: Record<string, string | undefined> = {};
   request.headers.forEach((value, key) => {
@@ -118,8 +106,8 @@ function normalizePath(pathname: string): string {
   return pathname;
 }
 
-async function runHandler(handler: VercelHandler, request: Request): Promise<Response> {
-  const req = await toVercelLikeRequest(request);
+async function runHandler(handler: HttpHandler, request: Request): Promise<Response> {
+  const req = await toHttpRequest(request);
   const res = new ResponseCapture();
   await handler(req, res);
   return res.toResponse();
@@ -133,19 +121,19 @@ export default {
     const path = normalizePath(url.pathname);
 
     if (path === "/" || path === "/api") {
-      return runHandler(indexHandler as VercelHandler, request);
+      return runHandler(indexHandler as HttpHandler, request);
     }
     if (path === "/api/health") {
-      return runHandler(healthHandler as VercelHandler, request);
+      return runHandler(healthHandler as HttpHandler, request);
     }
     if (path === "/api/notify") {
-      return runHandler(notifyHandler as VercelHandler, request);
+      return runHandler(notifyHandler as HttpHandler, request);
     }
     if (path === "/api/setup") {
-      return runHandler(setupHandler as VercelHandler, request);
+      return runHandler(setupHandler as HttpHandler, request);
     }
     if (path === "/api/telegram") {
-      return runHandler(telegramHandler as VercelHandler, request);
+      return runHandler(telegramHandler as HttpHandler, request);
     }
 
     return new Response("Not found", { status: 404 });

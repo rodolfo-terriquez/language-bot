@@ -1,8 +1,8 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
+import type { HttpRequest, HttpResponse } from "../lib/http.js";
 
 export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse
+  req: HttpRequest,
+  res: HttpResponse
 ): Promise<void> {
   // Only allow GET requests for easy browser access
   if (req.method !== "GET") {
@@ -16,21 +16,19 @@ export default async function handler(
     if (!token) {
       res.status(400).json({
         error: "TELEGRAM_BOT_TOKEN is not set",
-        hint: "Add TELEGRAM_BOT_TOKEN to your Vercel environment variables",
+        hint: "Add TELEGRAM_BOT_TOKEN to your Cloudflare Worker secrets",
       });
       return;
     }
 
-    // Get the base URL from Vercel environment or query parameter
-    const baseUrl =
-      (req.query.url as string) ||
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+    // Get the base URL from Cloudflare configuration or query parameter
+    const baseUrl = req.query.url || process.env.BASE_URL || null;
 
     if (!baseUrl) {
       res.status(400).json({
         error: "No base URL provided",
-        hint: "Pass ?url=https://your-domain.vercel.app",
-        vercel_url: process.env.VERCEL_URL || "not set",
+        hint: "Pass ?url=https://your-worker.workers.dev or set BASE_URL",
+        base_url: process.env.BASE_URL || "not set",
       });
       return;
     }
@@ -72,4 +70,3 @@ export default async function handler(
     });
   }
 }
-

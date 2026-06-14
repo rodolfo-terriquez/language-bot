@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "description": "Private Japanese conversation practice Telegram bot with memory, voice input, and grammar helpers",
-  "main": "api/telegram.ts",
+  "main": "worker.ts",
   "scripts": {
-    "dev": "vercel dev",
+    "dev": "wrangler dev",
     "lint": "eslint . --ext .ts",
     "type-check": "tsc --noEmit",
     "dev:cf": "wrangler dev",
@@ -19,8 +19,8 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "@vercel/node": "^3.2.0",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "wrangler": "^4.100.0"
   },
   "engines": {
     "node": ">=18.0.0"

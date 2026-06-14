@@ -28,8 +28,29 @@ export async function sendMessage(chatId: number, text: string): Promise<void> {
     console.warn(`[Telegram] Could not check last message for ${chatId}:`, e);
   }
 
-  // Try with Markdown first
-  let response = await fetch(`${TELEGRAM_API}${token}/sendMessage`, {
+  // Bot API 10.1 Rich Messages support GitHub-flavored Markdown-style content.
+  let response = await fetch(`${TELEGRAM_API}${token}/sendRichMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      rich_message: {
+        markdown: text,
+      },
+    }),
+  });
+
+  if (response.ok) {
+    console.log(`[Telegram] Rich message sent successfully`);
+    try { await setLastAssistantMessage(chatId, text); } catch {}
+    return;
+  }
+
+  const richMessageError = await response.text();
+  console.warn("Rich message send failed, retrying with legacy Markdown:", richMessageError);
+
+  // Fall back to legacy Markdown for older Telegram Bot API compatibility.
+  response = await fetch(`${TELEGRAM_API}${token}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

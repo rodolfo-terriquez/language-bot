@@ -56,7 +56,7 @@ Avoid:
 
 ## Tech stack
 
-- **Runtime:** Vercel Serverless Functions, TypeScript
+- **Runtime:** Cloudflare Workers, TypeScript
 - **Interface:** Telegram Bot API
 - **LLM:** OpenRouter-compatible chat completions
 - **Voice transcription:** OpenAI Whisper
@@ -68,6 +68,8 @@ Avoid:
 
 ```text
 language-bot/
+├── worker.ts         # Cloudflare Worker entrypoint and route adapter
+├── wrangler.toml    # Cloudflare Worker configuration
 ├── api/
 │   ├── index.ts      # small status/landing page
 │   ├── telegram.ts   # Telegram webhook handler
@@ -120,7 +122,7 @@ BRAINTRUST_PROJECT_ID=
 ```bash
 npm install
 npm run type-check
-vercel dev
+npm run dev
 ```
 
 Local Telegram webhook testing requires a public tunnel such as ngrok.
@@ -129,10 +131,10 @@ Local Telegram webhook testing requires a public tunnel such as ngrok.
 
 Before using it again:
 
-1. Confirm the Vercel project is linked and deployed.
-2. Confirm production environment variables are present.
+1. Confirm the Cloudflare Worker is configured and deployed.
+2. Confirm production secrets and variables are present in Cloudflare.
 3. Visit `/api/health` on the deployment URL.
-4. Set Telegram webhook via `/api/setup?url=https://your-domain.vercel.app` or the Telegram API.
+4. Set Telegram webhook via `/api/setup?url=https://your-worker.workers.dev` or the Telegram API.
 5. Send a real Telegram message to Emi.
 6. Test `/eng` and `/exp`.
 7. Keep `/checkin off` unless proactive practice is explicitly wanted.

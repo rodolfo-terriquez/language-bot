@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
+import type { HttpRequest, HttpResponse } from "../lib/http.js";
 import { verifySignature, scheduleProactiveCheckIn } from "../lib/qstash.js";
 import {
   getProactiveSchedule,
@@ -29,7 +29,7 @@ interface NotificationPayload {
   data?: unknown;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
+export default async function handler(req: HttpRequest, res: HttpResponse): Promise<void> {
   // Only accept POST requests
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });

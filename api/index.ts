@@ -1,14 +1,10 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
+import type { HttpRequest, HttpResponse } from "../lib/http.js";
 
 export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse
+  req: HttpRequest,
+  res: HttpResponse
 ): Promise<void> {
-  const baseUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : req.headers.host
-      ? `https://${req.headers.host}`
-      : "your-domain";
+  const baseUrl = process.env.BASE_URL || (req.headers.host ? `https://${req.headers.host}` : "");
 
   res.status(200).send(`
     <!DOCTYPE html>
@@ -109,7 +105,7 @@ export default async function handler(
           </div>
           <div class="status-item">
             <span>Webhook</span>
-            <span><code>/api/telegram</code></span>
+            <span><code>${baseUrl ? `${baseUrl}/api/telegram` : "/api/telegram"}</code></span>
           </div>
         </div>
 
@@ -136,4 +132,3 @@ export default async function handler(
     </html>
   `);
 }
-

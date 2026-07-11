@@ -62,7 +62,6 @@ Avoid:
 - **Voice transcription:** OpenAI Whisper
 - **Storage:** Upstash Redis
 - **Scheduling:** Upstash QStash
-- **Tracing:** Braintrust optional
 
 ## Project structure
 
@@ -95,6 +94,7 @@ See `.env.example` for the full list. Required in production:
 
 ```bash
 TELEGRAM_BOT_TOKEN=
+TELEGRAM_WEBHOOK_SECRET=
 ALLOWED_USERS=
 BASE_URL=
 REDIS_KEY_PREFIX=lang:
@@ -113,16 +113,14 @@ Optional:
 ```bash
 OPENROUTER_MODEL_CHAT=
 OPENROUTER_MODEL_INTENT=
-BRAINTRUST_API_KEY=
-BRAINTRUST_PROJECT_ID=
 ```
 
 ## Development
 
 ```bash
-npm install
-npm run type-check
-npm run dev
+bun install
+bun run type-check
+bun run dev
 ```
 
 Local Telegram webhook testing requires a public tunnel such as ngrok.
@@ -134,7 +132,7 @@ Before using it again:
 1. Confirm the Cloudflare Worker is configured and deployed.
 2. Confirm production secrets and variables are present in Cloudflare.
 3. Visit `/api/health` on the deployment URL.
-4. Set Telegram webhook via `/api/setup?url=https://your-worker.workers.dev` or the Telegram API.
+4. Set or repair the Telegram webhook by sending an authenticated `POST /api/setup` with `X-Setup-Token` equal to `TELEGRAM_WEBHOOK_SECRET`. The endpoint always uses the configured `BASE_URL`; it cannot redirect the webhook elsewhere.
 5. Send a real Telegram message to Emi.
 6. Test `/eng` and `/exp`.
 7. Keep `/checkin off` unless proactive practice is explicitly wanted.

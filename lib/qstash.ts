@@ -8,8 +8,6 @@ function getClient(): Client {
     if (!token) {
       throw new Error("QSTASH_TOKEN is not set");
     }
-    // Debug: log first 10 chars of token to verify it's correct
-    console.log(`[QStash] Initializing client with token: ${token.substring(0, 10)}...`);
     qstashClient = new Client({ token });
   }
   return qstashClient;
@@ -226,8 +224,8 @@ export async function verifySignature(signature: string, body: string): Promise<
   const nextSigningKey = process.env.QSTASH_NEXT_SIGNING_KEY;
 
   if (!currentSigningKey || !nextSigningKey) {
-    console.warn("QStash signing keys not set, skipping verification");
-    return true; // Skip verification in development
+    console.error("QStash signing keys are not configured");
+    return false;
   }
 
   const { Receiver } = await import("@upstash/qstash");

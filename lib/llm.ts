@@ -1,6 +1,5 @@
 import OpenAI from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
-import { initLogger, wrapOpenAI } from "braintrust";
 import type {
   Intent,
   ConversationMessage,
@@ -9,19 +8,6 @@ import type {
   EmiMemory,
   EmiMemoryFact,
 } from "./types.js";
-
-// Initialize Braintrust logger for tracing
-const braintrustApiKey = process.env.BRAINTRUST_API_KEY;
-const braintrustProjectId = process.env.BRAINTRUST_PROJECT_ID;
-
-console.log(
-  `[Braintrust] Initializing with project ID: ${braintrustProjectId}, API key set: ${!!braintrustApiKey}`,
-);
-
-const logger = initLogger({
-  projectId: braintrustProjectId,
-  apiKey: braintrustApiKey,
-});
 
 let openrouterClient: OpenAI | null = null;
 
@@ -54,17 +40,15 @@ function getClient(): OpenAI {
     if (!apiKey) {
       throw new Error("OPENROUTER_API_KEY is not set");
     }
-    openrouterClient = wrapOpenAI(
-      new OpenAI({
-        baseURL: "https://openrouter.ai/api/v1",
-        apiKey,
-        timeout: 20000,
-        defaultHeaders: {
-          "HTTP-Referer": process.env.BASE_URL || "https://language-bot.rodolfo-302.workers.dev",
-          "X-Title": "Japanese Language Bot",
-        },
-      }),
-    );
+    openrouterClient = new OpenAI({
+      baseURL: "https://openrouter.ai/api/v1",
+      apiKey,
+      timeout: 20000,
+      defaultHeaders: {
+        "HTTP-Referer": process.env.BASE_URL || "https://language-bot.rodolfo-302.workers.dev",
+        "X-Title": "Japanese Language Bot",
+      },
+    });
   }
   return openrouterClient;
 }

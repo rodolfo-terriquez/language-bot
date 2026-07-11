@@ -125,7 +125,7 @@ export default async function handler(
           <p><strong>Endpoints:</strong></p>
           <p><code>POST /api/telegram</code> - Telegram webhook</p>
           <p><code>POST /api/notify</code> - QStash callbacks</p>
-          <p><code>GET /api/setup</code> - Set webhook URL</p>
+          <p><code>POST /api/setup</code> - Authenticated webhook repair</p>
         </div>
       </div>
     </body>

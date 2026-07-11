@@ -81,19 +81,21 @@ async function toHttpRequest(request: Request): Promise<HttpRequest> {
   });
 
   let body: unknown;
+  let rawBody: string | undefined;
   if (request.method !== "GET" && request.method !== "HEAD") {
+    rawBody = await request.text();
     const contentType = request.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
-      const text = await request.text();
-      body = text ? JSON.parse(text) : undefined;
+      body = rawBody ? JSON.parse(rawBody) : undefined;
     } else {
-      body = await request.text();
+      body = rawBody;
     }
   }
 
   return {
     method: request.method,
     body,
+    rawBody,
     query,
     headers,
   };

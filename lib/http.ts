@@ -1,6 +1,7 @@
 export type HttpRequest = {
   method: string;
   body?: unknown;
+  rawBody?: string;
   query: Record<string, string>;
   headers: Record<string, string | undefined>;
 };

@@ -39,15 +39,18 @@ export default async function handler(req: HttpRequest, res: HttpResponse): Prom
   try {
     // Verify QStash signature
     const signature = req.headers["upstash-signature"] as string | undefined;
-    const rawBody = JSON.stringify(req.body);
+    const rawBody = req.rawBody;
 
-    if (signature) {
-      const isValid = await verifySignature(signature, rawBody);
-      if (!isValid) {
-        console.error("Invalid QStash signature");
-        res.status(401).json({ error: "Invalid signature" });
-        return;
-      }
+    if (!signature || rawBody === undefined) {
+      res.status(401).json({ error: "Missing signature" });
+      return;
+    }
+
+    const isValid = await verifySignature(signature, rawBody);
+    if (!isValid) {
+      console.error("Invalid QStash signature");
+      res.status(401).json({ error: "Invalid signature" });
+      return;
     }
 
     const payload = req.body as NotificationPayload;

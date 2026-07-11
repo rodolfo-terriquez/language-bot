@@ -85,6 +85,19 @@ export default async function handler(req: HttpRequest, res: HttpResponse): Prom
     return;
   }
 
+  const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    console.error("TELEGRAM_WEBHOOK_SECRET is not configured");
+    res.status(503).json({ error: "Webhook unavailable" });
+    return;
+  }
+
+  const providedSecret = req.headers["x-telegram-bot-api-secret-token"];
+  if (!providedSecret || !constantTimeEqual(providedSecret, webhookSecret)) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
   let chatId: number | undefined;
   let stage = "start";
 
@@ -298,6 +311,15 @@ Just start chatting in Japanese (or English if you prefer), and I'll match your 
     }
     res.status(500).json({ error: "Internal server error", stage, detail });
   }
+}
+
+function constantTimeEqual(left: string, right: string): boolean {
+  const maxLength = Math.max(left.length, right.length);
+  let mismatch = left.length ^ right.length;
+  for (let index = 0; index < maxLength; index += 1) {
+    mismatch |= (left.charCodeAt(index) || 0) ^ (right.charCodeAt(index) || 0);
+  }
+  return mismatch === 0;
 }
 
 async function handleResetCommand(chatId: number, type: "all" | "context"): Promise<void> {

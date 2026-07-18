@@ -12,7 +12,7 @@
     "deploy:cf": "wrangler deploy"
   },
   "dependencies": {
-    "@upstash/qstash": "2.11.1",
+    "@upstash/qstash": "2.11.2",
     "@upstash/redis": "1.38.0",
     "openai": "^4.73.0"
   },
